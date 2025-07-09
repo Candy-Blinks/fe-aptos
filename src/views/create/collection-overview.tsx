@@ -7,7 +7,7 @@ import { useFieldArray, useFormContext } from "react-hook-form";
 import { ICollectionInformationSchema } from "@/lib/schemas/create_launchpad.schema";
 
 import { useStore } from "@/store/store";
-import { cn, findCandyStorePda } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import WorldIcon from "@/components/icons/world";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -16,10 +16,11 @@ import { ASSETS_URL, PINATA_GATEWAY } from "@/constants";
 import { Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 //import useLaunchpadProgram from "@/hooks/programs/useLaunchpadProgram";
-import { Account } from "@aptos-labs/ts-sdk";
 import LoadingDialog from "./loading-dialog";
 import SuccessDialog from "./success-dialog";
 import { useRouter } from "next/navigation";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import useCreateCollection from "@/hooks/useCreateCollection";
 
 export default function CollectionOverview() {
   const { control, watch, getValues, reset } =
@@ -36,32 +37,15 @@ export default function CollectionOverview() {
 
   const { push } = useRouter();
 
-  //const { createCandyStore } = useLaunchpadProgram();
+  const { account } = useWallet();
 
-  // Mock createCandyStore for testing
-  const createCandyStore = {
-    isPending: false,
-    isError: false,
-    isSuccess: false,
-    error: null,
-    mutate: async (params: any) => {
-      console.log("Creating candy store with params:", params);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate success or error based on random chance or specific conditions
-      const shouldSucceed = Math.random() >= 0; // 80% success rate
-      
-      if (shouldSucceed) {
-        console.log("Candy store created successfully!");
-        // You can add success logic here
-      } else {
-        console.error("Failed to create candy store");
-        // You can add error logic here
-      }
-    }
-  };
+  const { 
+    mutateAsync: createCollectionMutation, 
+    isPending, 
+    isSuccess, 
+    isError, 
+    error 
+  } = useCreateCollection();
 
   const collectionImage = useMemo(
     () =>
@@ -96,55 +80,39 @@ export default function CollectionOverview() {
   const [openSuccess, setOpenSuccess] = useState(false);
 
   useEffect(() => {
-    if (!createCandyStore?.isPending || createCandyStore?.isError) {
+    if (isPending) {
+      setOpenLoading(true);
+    } else {
       setOpenLoading(false);
     }
-  }, [createCandyStore?.isError, createCandyStore?.isPending]);
+  }, [isPending]);
 
   useEffect(() => {
-    if (createCandyStore?.isSuccess) {
+    if (isSuccess) {
       setOpenSuccess(true);
     }
-  }, [createCandyStore?.isSuccess, resetCreatePage, reset]);
+  }, [isSuccess, resetCreatePage, reset]);
 
   const onProceed = async () => {
-    setOpenLoading(true);
-    const collectionAccount = Account.generate();
-    const candyStoreAddress = findCandyStorePda(collectionAccount.accountAddress.toString());
+    if (!account) return;
 
-    createCandyStore?.mutate({
-      signers: {
-        collection: collectionAccount,
-      },
-      accounts: {
-        collection: collectionAccount.accountAddress.toString(),
-        candyStore: candyStoreAddress,
-      },
-      args: {
-        creators: fields.map((creator) => {
-          return {
-            address: creator.wallet, // Already a string in Aptos
-            percentage: Number(creator.shares),
-          };
-        }),
-        name: getValues("collectionName") ?? "",
-        url: `${PINATA_GATEWAY}ipfs/${jsonManifestId}`,
-        manifestId: jsonManifestId ?? "",
-        numberOfItems: createUploadedImages.length - 1,
-        description: getValues("collectionDescription"),
-        tg: getValues("tg"),
-        x: getValues("x"),
-        yt: getValues("yt"),
-        discord: getValues("discord"),
-        website: getValues("website"),
-        banner: collectionBanner ?? "",
-      },
-    });
+    try {
+      const { collectionTxHash } = await createCollectionMutation({
+        collectionName: getValues("collectionName"),
+        collectionDescription: getValues("collectionDescription"),
+        collectionURI: `${PINATA_GATEWAY}ipfs/${jsonManifestId}/collection.json`,
+      });
+      console.log(`Transaction succeeded, hash: ${collectionTxHash}`);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   useEffect(() => {
-    console.log(createCandyStore?.error);
-  }, [createCandyStore?.error]);
+    if (isError) {
+      console.error(error);
+    }
+  }, [isError, error]);
 
   return (
     <>

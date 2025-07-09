@@ -53,7 +53,7 @@ export default function CollectionInformationForm() {
   useEffect(() => {
     if (account && fields.length == 0) {
       remove();
-      append({ shares: "100", wallet: account.toString() });
+      append({ shares: "100", wallet: account.address.toString() });
     }
   }, [account, fields, append, remove]);
 
