@@ -19,7 +19,7 @@ export default function FeedCollectionPost({
       imageUrl: "/images/cmb/2.png",
       // delete this image url to get the collection image
       description:
-        "Candy Mob Business is a collection of 10,000 unique NFTs that represent ownership of a digital asset on the Solana blockchain. Each NFT is a one-of-a-kind piece of art that is stored on the blockchain, ensuring its authenticity and scarcity. The collection features a variety of designs and styles, making it a must-have for any NFT collector.",
+        "Candy Mob Business is a collection of 10,000 unique NFTs that represent ownership of a digital asset on the Aptos blockchain. Each NFT is a one-of-a-kind piece of art that is stored on the blockchain, ensuring its authenticity and scarcity. The collection features a variety of designs and styles, making it a must-have for any NFT collector.",
       mintAddress: "cmb-01",
 
       address: "GJrHBFafo9F2am5kEUBi4hyckrCmDX9fWUopFxEj1LeA",

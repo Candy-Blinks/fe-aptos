@@ -58,17 +58,17 @@ export default function FeedNormalPost({
             <TipButton
               currency={"$"}
               amount={"1.00"}
-              icon={`${ASSETS_URL}icons/feed-solana-colored.svg`}
+              icon={`${ASSETS_URL}icons/feed-aptos-colored.svg`}
             />
             <TipButton
               currency={"$"}
               amount={"1.50"}
-              icon={`${ASSETS_URL}icons/feed-solana-colored.svg`}
+              icon={`${ASSETS_URL}icons/feed-aptos-colored.svg`}
             />
             <TipButton
               currency={"$"}
               amount={"2.00"}
-              icon={`${ASSETS_URL}icons/feed-solana-colored.svg`}
+              icon={`${ASSETS_URL}icons/feed-aptos-colored.svg`}
             />
             <div
               className="
