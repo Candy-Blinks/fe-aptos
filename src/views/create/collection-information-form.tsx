@@ -37,13 +37,13 @@ export default function CollectionInformationForm() {
   const onProceed = async () => {
     const valid = await trigger();
 
-    if (!collectionBanner) {
-      console.log(collectionBanner);
+    // if (!collectionBanner) {
+    //   console.log(collectionBanner);
 
-      toast("Collection banner is required");
+    //   toast("Collection banner is required");
 
-      return;
-    }
+    //   return;
+    // }
     if (valid) {
       setCreatePage(createPage + 1);
       console.log(createPage);

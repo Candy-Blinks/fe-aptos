@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import Footer from "@/components/footer";
 import { cn, truncateAddress } from "@/lib/utils";
 import { useParams } from "next/navigation";
-import useFetchCandyStore from "@/hooks/api/useFetchCandyStore";
 import useFetchMetadata from "@/hooks/useFetchMetadata";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useStore } from "@/store/store";
@@ -26,6 +25,7 @@ import { ASSETS_URL } from "@/constants";
 import { Countdown } from "@/components/countdown";
 import WorldIcon from "@/components/icons/world";
 import { Separator } from "@/components/ui/separator";
+import useMintToken from "@/hooks/useMintToken";
 
 export default function Store() {
   const params = useParams();
@@ -41,81 +41,83 @@ export default function Store() {
 
   const { account } = useWallet();
 
-  // TODO: Replace with Aptos mint functionality
-  // const { mintAsset } = useLaunchpadProgram();
-  const { data: candyStore } = useFetchCandyStore({
-    candyStoreAddress: params?.id as string,
-  });
+  const { 
+    mutateAsync: mintTokenMutation, 
+    isPending, 
+    isSuccess, 
+    isError, 
+    error 
+  } = useMintToken();
 
-  const { data: assets } = useQuery({
-    queryFn: async () => {
-      const {
-        data: { data },
-      } = await API_INSTANCE.get(`assets/collection/${candyStore?.collection}`);
+  // const { data: assets } = useQuery({
+  //   queryFn: async () => {
+  //     const {
+  //       data: { data },
+  //     } = await API_INSTANCE.get(`assets/collection/${candyStore?.collection}`);
 
-      return data ?? [];
-    },
-    enabled: !!candyStore?.collection,
-    queryKey: ["assets", candyStore?.collection],
-  });
+  //     return data ?? [];
+  //   },
+  //   enabled: !!candyStore?.collection,
+  //   queryKey: ["assets", candyStore?.collection],
+  // });
 
-  const { data: comments } = useQuery({
-    queryFn: async () => {
-      const {
-        data: { data },
-      } = await API_INSTANCE.get(
-        `candy-store-comments/candy-store/${candyStore?.address}`
-      );
+  // const { data: comments } = useQuery({
+  //   queryFn: async () => {
+  //     const {
+  //       data: { data },
+  //     } = await API_INSTANCE.get(
+  //       `candy-store-comments/candy-store/${candyStore?.address}`
+  //     );
 
-      return data ?? [];
-    },
-    enabled: !!candyStore?.address,
-    queryKey: ["comments", candyStore?.address],
-  });
+  //     return data ?? [];
+  //   },
+  //   enabled: !!candyStore?.address,
+  //   queryKey: ["comments", candyStore?.address],
+  // });
 
-  const queryClient = useQueryClient();
-  const [currentComment, setCurrentComment] = useState("");
+  // const queryClient = useQueryClient();
+  // const [currentComment, setCurrentComment] = useState("");
 
-  const { mutate: comment } = useMutation({
-    mutationFn: async ({ candyStore, user, data }: any) => {
-      if (data.trim() != "") {
-        await API_INSTANCE.post("candy-store-comments", {
-          candyStore,
-          user,
-          data,
-        });
-      }
-    },
-    onSuccess: () => {
-      setCurrentComment("");
-      queryClient.invalidateQueries();
-    },
-  });
+  // const { mutate: comment } = useMutation({
+  //   mutationFn: async ({ candyStore, user, data }: any) => {
+  //     if (data.trim() != "") {
+  //       await API_INSTANCE.post("candy-store-comments", {
+  //         candyStore,
+  //         user,
+  //         data,
+  //       });
+  //     }
+  //   },
+  //   onSuccess: () => {
+  //     setCurrentComment("");
+  //     queryClient.invalidateQueries();
+  //   },
+  // });
 
-  const onComment = () => {
-    comment({
-      candyStore: candyStore?.address,
-      user: account?.address?.toString(),
-      data: currentComment,
-    });
-  };
+  // const onComment = () => {
+  //   comment({
+  //     candyStore: candyStore?.address,
+  //     user: account?.address?.toString(),
+  //     data: currentComment,
+  //   });
+  // };
 
-  const { data: collectionMetadata } = useFetchMetadata({
-    url: candyStore?.url ? `${candyStore?.url}/collection.json` : undefined,
-  });
+  // const { data: collectionMetadata } = useFetchMetadata({
+  //   url: candyStore?.url ? `${candyStore?.url}/collection.json` : undefined,
+  // });
 
-  useEffect(() => {
-    console.log(candyStore);
-  }, [candyStore]);
+  // useEffect(() => {
+  //   console.log(candyStore);
+  // }, [candyStore]);
 
-  useEffect(() => {
-    const tempPhases = candyStore?.phases ?? [];
+  // useEffect(() => {
+  //   const tempPhases = candyStore?.phases ?? [];
 
-    if (tempPhases.length > 0) {
-      setMintPhases(tempPhases);
-      setMintCurrentPhase(tempPhases?.[0]?.label);
-    }
-  }, [setMintPhases, candyStore?.phases, setMintCurrentPhase]);
+  //   if (tempPhases.length > 0) {
+  //     setMintPhases(tempPhases);
+  //     setMintCurrentPhase(tempPhases?.[0]?.label);
+  //   }
+  // }, [setMintPhases, candyStore?.phases, setMintCurrentPhase]);
 
   // interface IMintArgs {
   //   signers: {
@@ -138,21 +140,20 @@ export default function Store() {
     // TODO: Implement Aptos minting functionality
     // In Aptos, you would typically call a Move function instead of generating keypairs
     console.log("Minting with current phase:", mintCurrentPhase);
-    
-    // Example Aptos transaction structure:
-    // const transaction = {
-    //   data: {
-    //     function: `${MODULE_ADDRESS}::nft_mint::mint_nft`,
-    //     arguments: [candyStore?.collection, mintCurrentPhase],
-    //   },
-    // };
-    
-    // try {
-    //   const response = await signAndSubmitTransaction(transaction);
-    //   console.log("Mint successful:", response);
-    // } catch (error) {
-    //   console.error("Mint failed:", error);
-    // }
+
+    if (!account) return;
+
+    try {
+      const { mintTransactionHash } = await mintTokenMutation({
+        collectionName: "Candy Mob Business",
+        tokenName: "CMB",
+        tokenDescription: "Candy Mob Business",
+        tokenURI: `https://uploader.irys.xyz/8dCAspWiFHkyRWSMkh6Ub2qMvT6zeohBE3UEQ47W8SWs/`,
+      });
+      console.log(`Transaction succeeded, hash: ${mintTransactionHash}`);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const phaseStatusDisplay = (phase: any) => {
@@ -241,9 +242,10 @@ export default function Store() {
                   <div className="size-[500px]  rounded-3xl relative">
                     <Image
                       src={
-                        collectionMetadata?.image
-                          ? collectionMetadata?.image
-                          : `${ASSETS_URL}candyblinks.png`
+                        // collectionMetadata?.image
+                        //   ? collectionMetadata?.image
+                        //   : 
+                          `${ASSETS_URL}candyblinks.png`
                       }
                       alt="Collection Image"
                       fill
@@ -252,7 +254,7 @@ export default function Store() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-[10px] justify-between w-full">
+                {/* <div className="flex items-center gap-[10px] justify-between w-full">
                   {Array.from({ length: 3 }, (_, i) => i + 1).map((value) => {
                     return (
                       <NftImage
@@ -263,7 +265,7 @@ export default function Store() {
                       />
                     );
                   })}
-                </div>
+                </div> */}
               </div>
               <div className="basis-[50%] max-w-[500px] flex flex-col gap-4">
                 <p className={cn("ty-h3 text-white-100")}>Candy Mob Business</p>
@@ -348,17 +350,17 @@ export default function Store() {
                             </p>
                           </div>
                           <div className="w-full">
-                            <Progress
+                            {/* <Progress
                               className=" w-full h-[8px] bg-[#FAFCFF80]"
                               value={
                                 (candyStore?.minted ??
                                   0 / candyStore?.numberOfItems ??
                                   0) * 10
                               }
-                            />
+                            /> */}
                           </div>
                           <div className="flex items-center justify-between">
-                            <p
+                            {/* <p
                               className={cn(
                                 "text-[14px] font-medium text-white-100"
                               )}
@@ -379,7 +381,7 @@ export default function Store() {
                               {phase.allocation
                                 ? `${candyStore?.minted}/${candyStore?.numberOfItems}`
                                 : ""}
-                            </p>
+                            </p> */}
                           </div>
                           <div className="flex items-center justify-between">
                             <p
@@ -410,7 +412,7 @@ export default function Store() {
 
                 {mintTab === 1 && (
                   <div className="w-full flex flex-col gap-2">
-                    <div className="w-full text-[18px] p-4 flex flex-col gap-4 rounded-lg bg-white-4 border border-white-4 transition ease-in-out duration-200">
+                    {/* <div className="w-full text-[18px] p-4 flex flex-col gap-4 rounded-lg bg-white-4 border border-white-4 transition ease-in-out duration-200">
                       <a
                         href={
                           candyStore?.website.startsWith("http")
@@ -437,7 +439,7 @@ export default function Store() {
                       <p className="text-white-100 ">
                         {candyStore?.description}
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                 )}
               </div>
@@ -449,7 +451,7 @@ export default function Store() {
               <p className={cn("ty-h4 text-white-100")}>Recently minted NFTs</p>
             </div>
 
-            <div className="w-full flex flex-row gap-2">
+            {/* <div className="w-full flex flex-row gap-2">
               {assets &&
                 Array.isArray(assets) &&
                 assets.length > 0 &&
@@ -467,10 +469,10 @@ export default function Store() {
                     )
                   );
                 })}
-            </div>
+            </div> */}
           </div>
 
-          <div className="flex flex-col gap-4">
+          {/* <div className="flex flex-col gap-4">
             <div className="w-full flex items-center justify-between">
               <p className={cn("ty-h4 text-white-100")}>Comments</p>
             </div>
@@ -540,7 +542,7 @@ export default function Store() {
                 </div>
               );
             })}
-          </div>
+          </div> */}
 
           <div className="w-full flex flex-col gap-16 items-center h-[510px] justify-center">
             <div className="flex flex-col gap-4 items-center">
