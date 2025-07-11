@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { Account } from "@aptos-labs/ts-sdk";
 import { MODULE_ADDRESS } from "@/constants";
+import { format } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -71,4 +72,9 @@ export function getCountdownTime(unixTimestamp: number): CountdownTime {
   const seconds = Math.floor((difference / 1000) % 60).toString().padStart(2, "0");
 
   return { days, hours, minutes, seconds, isComplete: false };
+}
+
+export function formatUnixTimestamp(unixTimestamp: number) {
+  const date = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
+  return format(date, "MMMM dd, yyyy HH:mm:ss"); // Example: December 20, 2024 10:15:24
 }
