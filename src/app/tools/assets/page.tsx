@@ -37,6 +37,22 @@ interface LayerOrder {
   enabled: boolean
 }
 
+interface RarityMapping {
+  [key: string]: number
+}
+
+const DEFAULT_RARITY_MAPPING: RarityMapping = {
+  COMMON: 50,
+  UNCOMMON: 40,
+  RARE: 30,
+  EPIC: 20,
+  LEGENDARY: 10,
+  MYTHIC: 5,
+  ULTRA_RARE: 3,
+  SUPER_RARE: 15,
+  VERY_RARE: 8,
+}
+
 export default function NFTGenerator() {
   const [traitCategories, setTraitCategories] = useState<TraitCategory[]>([])
   const [generatedNFTs, setGeneratedNFTs] = useState<GeneratedNFT[]>([])
@@ -136,6 +152,24 @@ export default function NFTGenerator() {
 
     return assets[assets.length - 1]
   }, [])
+
+  const deleteCategory = useCallback(
+    (categoryName: string) => {
+      // Remove from trait categories
+      setTraitCategories((prev) => prev.filter((cat) => cat.name !== categoryName))
+      // Remove from layer order
+      setLayerOrder((prev) => prev.filter((layer) => layer.categoryName !== categoryName))
+
+      // Clean up blob URLs to prevent memory leaks
+      const categoryToDelete = traitCategories.find((cat) => cat.name === categoryName)
+      if (categoryToDelete) {
+        categoryToDelete.assets.forEach((asset) => {
+          URL.revokeObjectURL(asset.url)
+        })
+      }
+    },
+    [traitCategories],
+  )
 
   const generateNFTTraits = useCallback((): { [category: string]: Asset } => {
     const traits: { [category: string]: Asset } = {}
@@ -345,6 +379,67 @@ export default function NFTGenerator() {
     })
   }, [traitCategories, generateNFTTraits, generateNFTImage])
 
+  const handleFolderUpload = useCallback((files: FileList) => {
+    const newCategories: { [categoryName: string]: TraitCategory } = {}
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
+        // Parse the file path: assets/TRAIT/RARITY/filename.ext
+        const pathParts = file.webkitRelativePath.split("/")
+
+        if (pathParts.length >= 3) {
+          const traitName = pathParts[pathParts.length - 3].toLowerCase()
+          const rarityName = pathParts[pathParts.length - 2].toUpperCase()
+
+          // Get rarity percentage from mapping, default to 25% if not found
+          const rarityPercentage = DEFAULT_RARITY_MAPPING[rarityName] || 25
+
+          const asset: Asset = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            file,
+            url: URL.createObjectURL(file),
+            rarity: rarityPercentage,
+          }
+
+          // Initialize category if it doesn't exist
+          if (!newCategories[traitName]) {
+            newCategories[traitName] = {
+              name: traitName,
+              assets: [],
+            }
+          }
+
+          newCategories[traitName].assets.push(asset)
+        }
+      }
+    })
+
+    // Add new categories to state
+    Object.values(newCategories).forEach((category) => {
+      setTraitCategories((prev) => {
+        const existingCategory = prev.find((cat) => cat.name === category.name)
+        if (existingCategory) {
+          // Merge with existing category
+          return prev.map((cat) =>
+            cat.name === category.name ? { ...cat, assets: [...cat.assets, ...category.assets] } : cat,
+          )
+        } else {
+          // Add new category and layer order
+          setLayerOrder((prevLayers) => [
+            ...prevLayers,
+            { categoryName: category.name, order: prevLayers.length, enabled: true },
+          ])
+          return [...prev, category]
+        }
+      })
+    })
+
+    console.log(
+      `Processed folder upload: ${Object.keys(newCategories).length} categories, ${Object.values(newCategories).reduce((sum, cat) => sum + cat.assets.length, 0)} total assets`,
+    )
+  }, [])
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-8">
@@ -374,87 +469,206 @@ export default function NFTGenerator() {
                 Upload images for different trait categories (background, body, head, accessories, etc.)
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter trait category name (e.g., head, body, background)"
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      const input = e.target as HTMLInputElement
-                      if (input.value.trim()) {
+            <CardContent className="space-y-6">
+              {/* Method 1: Individual Category Upload */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Method 1</Badge>
+                  <h3 className="text-lg font-semibold">Individual Category Upload</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Add categories one by one and upload images for each trait type.
+                </p>
+
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter trait category name (e.g., head, body, background)"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        const input = e.target as HTMLInputElement
+                        if (input.value.trim()) {
+                          addTraitCategory(input.value.trim())
+                          input.value = ""
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder*="trait category"]') as HTMLInputElement
+                      if (input?.value.trim()) {
                         addTraitCategory(input.value.trim())
                         input.value = ""
                       }
-                    }
-                  }}
-                />
-                <Button
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder*="trait category"]') as HTMLInputElement
-                    if (input?.value.trim()) {
-                      addTraitCategory(input.value.trim())
-                      input.value = ""
-                    }
-                  }}
-                >
-                  Add Category
-                </Button>
+                    }}
+                  >
+                    Add Category
+                  </Button>
+                </div>
+
+                <div className="grid gap-4">
+                  {traitCategories.map((category) => (
+                    <Card key={category.name}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
+                            <CardDescription>{category.assets.length} assets uploaded</CardDescription>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteCategory(category.name)}
+                            className="flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Category
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <Input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  handleFileUpload(category.name, e.target.files)
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {category.assets.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              {category.assets.map((asset) => (
+                                <div key={asset.id} className="relative group">
+                                  <div className="aspect-square bg-muted rounded-lg overflow-hidden">
+                                    <img
+                                      src={asset.url || "/placeholder.svg"}
+                                      alt={asset.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => removeAsset(category.name, asset.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  <p className="text-sm font-medium mt-2 truncate">{asset.name}</p>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {asset.rarity}% rarity
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
 
-              <div className="grid gap-4">
-                {traitCategories.map((category) => (
-                  <Card key={category.name}>
-                    <CardHeader>
-                      <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
-                      <CardDescription>{category.assets.length} assets uploaded</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <Input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={(e) => {
-                              if (e.target.files) {
-                                handleFileUpload(category.name, e.target.files)
-                              }
-                            }}
-                          />
-                        </div>
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
 
-                        {category.assets.length > 0 && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {category.assets.map((asset) => (
-                              <div key={asset.id} className="relative group">
-                                <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-                                  <img
-                                    src={asset.url || "/placeholder.svg"}
-                                    alt={asset.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => removeAsset(category.name, asset.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                <p className="text-sm font-medium mt-2 truncate">{asset.name}</p>
-                                <Badge variant="secondary" className="text-xs">
-                                  {asset.rarity}% rarity
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+              {/* Method 2: Folder Structure Upload */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Method 2</Badge>
+                  <h3 className="text-lg font-semibold">Folder Structure Upload</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Upload an entire assets folder with predefined structure and automatic rarity assignment.
+                </p>
+
+                <Card className="border-dashed border-2">
+                  <CardContent className="p-6">
+                    <div className="text-center space-y-4">
+                      <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <div>
+                        <h4 className="text-lg font-semibold">Upload Assets Folder</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Select your assets folder with the structure: assets/TRAIT/RARITY/images
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                      <Input
+                        type="file"
+                        webkitdirectory="true"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            handleFolderUpload(e.target.files)
+                          }
+                        }}
+                        className="max-w-sm mx-auto"
+                      />
+
+                      <div className="text-xs text-muted-foreground space-y-2">
+                        <p>
+                          <strong>Expected folder structure:</strong>
+                        </p>
+                        <div className="bg-muted p-3 rounded text-left font-mono text-xs">
+                          assets/
+                          <br />
+                          ├── body/
+                          <br />│ ├── common/
+                          <br />│ │ ├── body1.png
+                          <br />│ │ └── body2.png
+                          <br />│ ├── rare/
+                          <br />│ │ └── body3.png
+                          <br />│ └── legendary/
+                          <br />│ └── body4.png
+                          <br />
+                          └── head/
+                          <br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;├── common/
+                          <br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;│ └── head1.png
+                          <br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;└── epic/
+                          <br />
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── head2.png
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Rarity Mapping</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      {Object.entries(DEFAULT_RARITY_MAPPING).map(([rarity, percentage]) => (
+                        <div key={rarity} className="flex justify-between p-2 bg-muted rounded">
+                          <span className="font-medium">{rarity}</span>
+                          <span>{percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Folder names not in this list will default to 25% rarity
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>
