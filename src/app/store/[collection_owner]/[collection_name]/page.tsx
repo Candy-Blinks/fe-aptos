@@ -26,9 +26,22 @@ import { Countdown } from "@/components/countdown";
 import WorldIcon from "@/components/icons/world";
 import { Separator } from "@/components/ui/separator";
 import useMintToken from "@/hooks/useMintToken";
+import useFetchCollection from "@/hooks/api/useFetchCollection";
 
-export default function Store() {
-  const params = useParams();
+interface StoreProps {
+  params: {
+    collection_owner: string;
+    collection_name: string;
+  };
+}
+
+export default function Store({ params }: StoreProps) {
+  const { collection_owner, collection_name } = params;
+
+  const { data, isLoading, error } = useFetchCollection({
+    collectionOwner: collection_owner,
+    collectionName: collection_name,
+  });
 
   const {
     mintPhases,
@@ -46,7 +59,6 @@ export default function Store() {
     isPending, 
     isSuccess, 
     isError, 
-    error 
   } = useMintToken();
 
   // const { data: assets } = useQuery({
@@ -143,12 +155,15 @@ export default function Store() {
 
     if (!account) return;
 
+    console.log(data);
+
     try {
       const { mintTransactionHash } = await mintTokenMutation({
-        collectionName: "Candy Mob Business",
-        tokenName: "CMB",
-        tokenDescription: "Candy Mob Business",
-        tokenURI: `https://uploader.irys.xyz/8dCAspWiFHkyRWSMkh6Ub2qMvT6zeohBE3UEQ47W8SWs/`,
+        collectionOwner: data?.collection_owner,
+        collectionName: data?.collection_name,
+        tokenName: data?.token_name,
+        tokenDescription: data?.token_description,
+        tokenURI: `${data?.token_uri}`, 
       });
       console.log(`Transaction succeeded, hash: ${mintTransactionHash}`);
     } catch (error) {
@@ -228,6 +243,10 @@ export default function Store() {
     // TODO: Implement error handling for Aptos minting
     // console.log(mintAsset?.error);
   }, []);
+
+
+  if (isLoading) return <p>Loading collection...</p>;
+  if (error) return <p>{(error as Error).message}</p>;
 
   return (
     <>
@@ -350,14 +369,14 @@ export default function Store() {
                             </p>
                           </div>
                           <div className="w-full">
-                            {/* <Progress
+                            <Progress
                               className=" w-full h-[8px] bg-[#FAFCFF80]"
                               value={
-                                (candyStore?.minted ??
-                                  0 / candyStore?.numberOfItems ??
+                                (data?.number_of_mints ??
+                                  0 / data?.max_supply ??
                                   0) * 10
                               }
-                            /> */}
+                            />
                           </div>
                           <div className="flex items-center justify-between">
                             {/* <p
@@ -412,12 +431,12 @@ export default function Store() {
 
                 {mintTab === 1 && (
                   <div className="w-full flex flex-col gap-2">
-                    {/* <div className="w-full text-[18px] p-4 flex flex-col gap-4 rounded-lg bg-white-4 border border-white-4 transition ease-in-out duration-200">
-                      <a
+                    <div className="w-full text-[18px] p-4 flex flex-col gap-4 rounded-lg bg-white-4 border border-white-4 transition ease-in-out duration-200">
+                      {/* <a
                         href={
-                          candyStore?.website.startsWith("http")
-                            ? candyStore?.website
-                            : `https://${candyStore?.website}`
+                          data?.website.startsWith("https")
+                            ? data?.website
+                            : `https://${data?.website}`
                         }
                         target="_blank"
                         rel="noopener noreferrer"
@@ -425,21 +444,21 @@ export default function Store() {
                       >
                         <WorldIcon />
                         <p className="text-white-100 underline">
-                          {candyStore?.website}
+                          {data?.website}
                         </p>
-                      </a>
+                      </a> */}
                       <Separator className="bg-[#FAFCFF0A]" />
                       <div>
                         <p className="text-[#FAFCFF80]">Supply</p>
                         <p className="text-white-100 ">
-                          {candyStore?.numberOfItems}
+                          {data?.max_supply}
                         </p>
                       </div>
                       <Separator className="bg-[#FAFCFF0A]" />
                       <p className="text-white-100 ">
-                        {candyStore?.description}
+                        {data?.collection_description}
                       </p>
-                    </div> */}
+                    </div>
                   </div>
                 )}
               </div>

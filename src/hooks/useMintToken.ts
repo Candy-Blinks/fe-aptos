@@ -4,6 +4,7 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { aptosClient } from "@/utils/aptosClient";
 
 interface IMintTokenArgs {
+  collectionOwner: string;
   collectionName: string;
   tokenName: string;
   tokenDescription: string;
@@ -15,6 +16,7 @@ export default function useMintToken() {
 
   const mutation = useMutation({
     mutationFn: async ({
+      collectionOwner,
       collectionName,
       tokenName,
       tokenDescription,
@@ -26,6 +28,8 @@ export default function useMintToken() {
       // Mint token transaction
       const committedTransaction = await signAndSubmitTransaction(
         mintToken({
+          // minter: minter,
+          collectionOwner: collectionOwner,
           collectionName: collectionName,
           tokenName: tokenName,
           tokenDesc: tokenDescription,

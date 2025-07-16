@@ -96,11 +96,21 @@ export default function CollectionOverview() {
   const onProceed = async () => {
     if (!account) return;
 
+    if (!jsonManifestId) {
+      console.error("jsonManifestId is required but is null or undefined");
+      return;
+    }
+
     try {
       const { collectionTxHash } = await createCollectionMutation({
         collectionName: getValues("collectionName"),
         collectionDescription: getValues("collectionDescription"),
         collectionURI: `${PINATA_GATEWAY}ipfs/${jsonManifestId}/collection.json`,
+        maxSupply: 10,
+        jsonManifestId: jsonManifestId,
+        symbol: getValues("collectionSymbol"),
+        //TODO: Make max supply taken from number of images uploaded
+        //TODO: Add Royalties
       });
       console.log(`Transaction succeeded, hash: ${collectionTxHash}`);
     } catch (error) {

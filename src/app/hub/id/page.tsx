@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 import Footer from "@/components/footer";
-import useFetchCandyStore from "@/hooks/api/useFetchCandyStore";
+import useFetchCandyStore from "@/hooks/api/useFetchCollection";
 import useFetchMetadata from "@/hooks/useFetchMetadata";
 import Link from "next/link";
 import PhaseEditorDialog from "@/views/hub/phase-editor-dialog";
