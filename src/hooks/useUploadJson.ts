@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { PINATA } from "@/constants";
+import { PINATA } from "@/lib/constants";
 
 interface IUploadJsonArgs {
   json: File[];

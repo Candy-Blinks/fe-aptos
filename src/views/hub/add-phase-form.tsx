@@ -8,20 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
 import { useFieldArray, useFormContext } from "react-hook-form";
-import {
-  IPhaseEditorSchema,
-  PhaseFormSchemaDefaults,
-} from "@/lib/schemas/edit_phase.schema";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { IPhaseEditorSchema, PhaseFormSchemaDefaults } from "@/lib/schemas/edit_phase.schema";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import DateTimePicker from "./date-time-picker";
 import Image from "next/image";
-import { ASSETS_URL } from "@/constants";
+import { ASSETS_URL } from "@/lib/constants";
 import UploadWallets from "./upload-allowlist";
 import { TooltipContext } from "@/components/tooltip";
 
@@ -46,9 +37,7 @@ export default function AddPhaseForm() {
           name="createPhaseForm.label"
           render={({ field }) => (
             <FormItem className={cn("w-full")}>
-              <FormLabel className={cn("text-white-100 ty-descriptions")}>
-                Phase name
-              </FormLabel>
+              <FormLabel className={cn("text-white-100 ty-descriptions")}>Phase name</FormLabel>
               <FormControl className="h-[32px] rounded-sm">
                 <Input
                   className="appearance-none border-0 placeholder:text-white-32 text-[14px] font-normal ps-2 placeholder:text-[14px] h-[32px]"
@@ -74,9 +63,7 @@ export default function AddPhaseForm() {
                       form.setValue("createPhaseForm.startDate.enabled", e);
                     }}
                   />
-                  <FormLabel className={cn("text-white-100 ty-descriptions")}>
-                    Start Date & Time
-                  </FormLabel>
+                  <FormLabel className={cn("text-white-100 ty-descriptions")}>Start Date & Time</FormLabel>
                 </div>
 
                 <DateTimePicker
@@ -104,9 +91,7 @@ export default function AddPhaseForm() {
                       form.setValue("createPhaseForm.endDate.enabled", e);
                     }}
                   />
-                  <FormLabel className={cn("text-white-100 ty-descriptions")}>
-                    End Date & Time
-                  </FormLabel>
+                  <FormLabel className={cn("text-white-100 ty-descriptions")}>End Date & Time</FormLabel>
                 </div>
 
                 <DateTimePicker
@@ -135,24 +120,15 @@ export default function AddPhaseForm() {
                         form.setValue("createPhaseForm.mintLimit.enabled", e);
                       }}
                     />
-                    <FormLabel
-                      className={cn(
-                        "flex justify-center items-center text-white-100 ty-descriptions"
-                      )}
-                    >
+                    <FormLabel className={cn("flex justify-center items-center text-white-100 ty-descriptions")}>
                       <p>Mint limit</p>
                       <div className="ms-1 flex h-full items-center justify-center">
-                                      <TooltipContext
-                                        trigger={
-                                          <Image
-                                            width={14}
-                                            height={14}
-                                            alt="hepl icon"
-                                            src={ASSETS_URL + "icons/help-circle.svg"}
-                                          />
-                                        }
-                                        description="Mint Limit"
-                                      />
+                        <TooltipContext
+                          trigger={
+                            <Image width={14} height={14} alt="hepl icon" src={ASSETS_URL + "icons/help-circle.svg"} />
+                          }
+                          description="Mint Limit"
+                        />
                       </div>
                     </FormLabel>
                   </div>
@@ -183,24 +159,15 @@ export default function AddPhaseForm() {
                         form.setValue("createPhaseForm.allocation.enabled", e);
                       }}
                     />
-                    <FormLabel
-                      className={cn(
-                        "flex justify-center items-center text-white-100 ty-descriptions"
-                      )}
-                    >
+                    <FormLabel className={cn("flex justify-center items-center text-white-100 ty-descriptions")}>
                       <p>Allocation</p>
                       <div className="ms-1 flex h-full items-center justify-center">
-                                      <TooltipContext
-                                        trigger={
-                                          <Image
-                                            width={14}
-                                            height={14}
-                                            alt="hepl icon"
-                                            src={ASSETS_URL + "icons/help-circle.svg"}
-                                          />
-                                        }
-                                        description="Allocation"
-                                      />
+                        <TooltipContext
+                          trigger={
+                            <Image width={14} height={14} alt="hepl icon" src={ASSETS_URL + "icons/help-circle.svg"} />
+                          }
+                          description="Allocation"
+                        />
                       </div>
                     </FormLabel>
                   </div>
@@ -227,24 +194,13 @@ export default function AddPhaseForm() {
                 form.setValue("createPhaseForm.aptosPayment.enabled", e);
               }}
             />
-            <FormLabel
-              className={cn(
-                "flex justify-center items-center text-white-100 ty-descriptions"
-              )}
-            >
+            <FormLabel className={cn("flex justify-center items-center text-white-100 ty-descriptions")}>
               <p>Price</p>
               <div className="ms-1 flex h-full items-center justify-center">
-              <TooltipContext
-                trigger={
-                  <Image
-                    width={14}
-                    height={14}
-                    alt="hepl icon"
-                    src={ASSETS_URL + "icons/help-circle.svg"}
-                  />
-                }
-                description="Price"
-              />
+                <TooltipContext
+                  trigger={<Image width={14} height={14} alt="hepl icon" src={ASSETS_URL + "icons/help-circle.svg"} />}
+                  description="Price"
+                />
               </div>
             </FormLabel>
           </div>
@@ -261,9 +217,7 @@ export default function AddPhaseForm() {
                       className="appearance-none rounded-sm border-0 placeholder:text-white-32 text-[14px] font-normal ps-2 placeholder:text-[14px] h-[32px]"
                       type="number"
                       placeholder="Enter Amount"
-                      disabled={
-                        !form.watch("createPhaseForm.aptosPayment.enabled")
-                      }
+                      disabled={!form.watch("createPhaseForm.aptosPayment.enabled")}
                     />
                     <FormMessage />
                   </FormItem>
@@ -280,9 +234,7 @@ export default function AddPhaseForm() {
                       {...field}
                       className="appearance-none rounded-sm border-0 placeholder:text-white-32 text-[14px] font-normal ps-2 placeholder:text-[14px] h-[32px]"
                       placeholder="Enter Wallet Address"
-                      disabled={
-                        !form.watch("createPhaseForm.aptosPayment.enabled")
-                      }
+                      disabled={!form.watch("createPhaseForm.aptosPayment.enabled")}
                     />
                     <FormMessage />
                   </FormItem>

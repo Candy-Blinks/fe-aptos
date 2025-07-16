@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import useUploadImages from "./useUploadImages";
 import useUploadJson from "./useUploadJson";
 import { jsonToFile } from "@/lib/utils";
-import { PINATA_GATEWAY } from "@/constants";
+import { PINATA_GATEWAY } from "@/lib/constants";
 
 interface IUseUploadMetadataArgs {
   images: File[];
@@ -41,8 +41,8 @@ export default function useUseUploadMetadata() {
               ...tempJson?.data,
               image: `${baseImageUrl}${tempImage.name}`,
             },
-            `${imageFileName}.json`
-          )
+            `${imageFileName}.json`,
+          ),
         );
       }
 

@@ -1,15 +1,9 @@
-import { ASSETS_URL } from "@/constants";
+import { ASSETS_URL } from "@/lib/constants";
 import Image from "next/image";
 import PostActions from "@/views/feed/post-actions";
 import { Button } from "@/components/ui/button";
 
-export default function FeedCollectionPost({
-  userData,
-  postData,
-}: {
-  userData: any;
-  postData: any;
-}) {
+export default function FeedCollectionPost({ userData, postData }: { userData: any; postData: any }) {
   const profileImageUrl = userData?.profileImageUrl || "/images/cmb/2.png";
 
   const nftCollections = [
@@ -52,9 +46,7 @@ export default function FeedCollectionPost({
     },
   ];
 
-  const collectionData = nftCollections.find(
-    (collection) => collection.collectionId === postData.collectionId
-  );
+  const collectionData = nftCollections.find((collection) => collection.collectionId === postData.collectionId);
 
   return (
     <article className="flex flex-col gap-4 bg-white-4 p-5 rounded-xl">
@@ -70,9 +62,7 @@ export default function FeedCollectionPost({
           />
         </figure>
         <div className="flex flex-col h-[40px]">
-          <p className="text-[18px] p-0 font-semibold text-white-80">
-            {userData?.name}
-          </p>
+          <p className="text-[18px] p-0 font-semibold text-white-80">{userData?.name}</p>
           {/* // TODO: make a function that normalize the 'created at' of the post into readable conveniences */}
           <p className="text-[16px] p-0 leading-[8px] font-semibold text-white-50">
             {/* {postData?.createdAt
@@ -122,11 +112,7 @@ export default function FeedCollectionPost({
 
       <div className="flex w-full justify-between">
         <div className="flex justify-between w-full items-center">
-          <PostActions
-            postId={postData?.postId}
-            likes={postData?.likes}
-            comments={postData?.comments}
-          />
+          <PostActions postId={postData?.postId} likes={postData?.likes} comments={postData?.comments} />
 
           <div className="flex justify-between items-center gap-2">
             <div
@@ -144,9 +130,7 @@ export default function FeedCollectionPost({
                   className="object-contain size-[24px]"
                 />
               </figure>
-              <p className="font-normal text-[16px] text-white-72 whitespace-nowrap">
-                Tip
-              </p>
+              <p className="font-normal text-[16px] text-white-72 whitespace-nowrap">Tip</p>
             </div>
             <div
               className="
@@ -163,9 +147,7 @@ export default function FeedCollectionPost({
                   className="object-contain size-[24px]"
                 />
               </figure>
-              <p className="font-normal text-[16px] text-white-72 whitespace-nowrap">
-                Share
-              </p>
+              <p className="font-normal text-[16px] text-white-72 whitespace-nowrap">Share</p>
             </div>
           </div>
         </div>
@@ -183,9 +165,7 @@ export default function FeedCollectionPost({
           />
         </figure>
         <div className="rounded-[8px] bg-white-4 h-[49px] flex items-center justify-start w-full">
-          <p className="p-4 text-[16px] font-normal text-white-50">
-            Write your comment
-          </p>
+          <p className="p-4 text-[16px] font-normal text-white-50">Write your comment</p>
         </div>
       </div>
     </article>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import CreatorCard from "@/views/feed/creator-card";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { ASSETS_URL } from "@/constants";
+import { ASSETS_URL } from "@/lib/constants";
 import { useState } from "react";
 import FeedForyou from "@/views/feed/feed-foryou";
 import FeedFollowing from "@/views/feed/feed-following";
@@ -17,7 +17,7 @@ export default function page() {
   //const { fetchAllCandyStores } = useLaunchpadProgram();
   // Mocked fetchAllCandyStores structure to prevent runtime errors
   const fetchAllCandyStores = { data: [] };
-  
+
   const [feedIsActive, setFeedIsActive] = useState("foryou");
   const profileImageUrl = "/images/cmb/2.png";
 
@@ -60,9 +60,7 @@ export default function page() {
       <div className="w-full flex items-center justify-center mt-10">
         <div className="max-w-[1420px] w-full flex justify-center">
           <aside className="flex border border-white-4 rounded-2xl flex-col justify-start h-fit items-center gap-4 p-4 w-[293px]">
-            <p className="flex justify-center items-center text-center w-full">
-              Featuered Collections
-            </p>
+            <p className="flex justify-center items-center text-center w-full">Featuered Collections</p>
 
             <div className="flex justify-center items-center flex-col gap-4">
               {fetchAllCandyStores.data?.slice(0, 3).map((candyStore: any) => {
@@ -86,8 +84,7 @@ export default function page() {
                   onClick={() => handleFeedChange("foryou")}
                   className={cn(
                     "bg-transparent text-white-50 font-normal rounded-sm hover:bg-white-4",
-                    feedIsActive === "foryou" &&
-                      "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold"
+                    feedIsActive === "foryou" && "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold",
                   )}
                 >
                   For you
@@ -96,8 +93,7 @@ export default function page() {
                   onClick={() => handleFeedChange("trending")}
                   className={cn(
                     "bg-transparent text-white-50 font-normal rounded-sm hover:bg-white-4",
-                    feedIsActive === "trending" &&
-                      "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold"
+                    feedIsActive === "trending" && "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold",
                   )}
                 >
                   Trending
@@ -106,8 +102,7 @@ export default function page() {
                   onClick={() => handleFeedChange("following")}
                   className={cn(
                     "bg-transparent text-white-50 font-normal rounded-sm hover:bg-white-4",
-                    feedIsActive === "following" &&
-                      "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold"
+                    feedIsActive === "following" && "bg-pink-100 hover:bg-pink-80 text-white-100 font-semibold",
                   )}
                 >
                   Following
@@ -148,9 +143,7 @@ export default function page() {
                   />
                 </figure>
                 <div className="rounded-[8px] bg-white-4 h-[49px] flex items-center justify-start w-full">
-                  <p className="p-4 text-[16px] font-normal text-white-50">
-                    Share your mind?
-                  </p>
+                  <p className="p-4 text-[16px] font-normal text-white-50">Share your mind?</p>
                 </div>
               </div>
               <div className="flex justify-between items-center">
@@ -186,28 +179,18 @@ export default function page() {
                     />
                   </figure>
                 </div>
-                <Button className="cursor-pointer bg-pink-50 hover:bg-pink-72">
-                  Create a post
-                </Button>
+                <Button className="cursor-pointer bg-pink-50 hover:bg-pink-72">Create a post</Button>
               </div>
             </section>
 
             {/* // ? these are working, but still have to se. a function for filteration into a proper algo */}
-            {feedIsActive === "foryou" && (
-              <FeedForyou posts={posts} user={user} />
-            )}
-            {feedIsActive === "trending" && (
-              <FeedTrending posts={posts} user={user} />
-            )}
-            {feedIsActive === "following" && (
-              <FeedFollowing posts={posts} user={user} />
-            )}
+            {feedIsActive === "foryou" && <FeedForyou posts={posts} user={user} />}
+            {feedIsActive === "trending" && <FeedTrending posts={posts} user={user} />}
+            {feedIsActive === "following" && <FeedFollowing posts={posts} user={user} />}
           </main>
 
           <aside className="flex border h-fit border-white-4 rounded-2xl flex-col justify-start items-center gap-4 p-4 w-[293px]">
-            <p className="flex justify-center items-center text-center w-full">
-              Featuered Creators
-            </p>
+            <p className="flex justify-center items-center text-center w-full">Featuered Creators</p>
 
             <div className="flex justify-center items-center flex-col gap-4">
               <CreatorCard

@@ -1,4 +1,4 @@
-import { API_URL } from "@/constants";
+import { API_URL } from "@/lib/constants";
 import { useStore } from "@/store/store";
 import { useQuery } from "@tanstack/react-query";
 
@@ -8,15 +8,13 @@ interface IUseFetchOwnedCandyStores {
   accountAddress?: string;
 }
 
-export default function useFetchOwnedCandyStores({
-  accountAddress,
-}: IUseFetchOwnedCandyStores) {
+export default function useFetchOwnedCandyStores({ accountAddress }: IUseFetchOwnedCandyStores) {
   const { setHubCandyStore, setHubCollection } = useStore();
 
   const query = useQuery({
     queryKey: ["collections", accountAddress],
     queryFn: async () => {
-    const { data } = await axios.get(`${API_URL}collections/owned-collections?owner=${accountAddress}`);
+      const { data } = await axios.get(`${API_URL}collections/owned-collections?owner=${accountAddress}`);
 
       if (!data || data.length === 0) {
         throw new Error("No collections found.");

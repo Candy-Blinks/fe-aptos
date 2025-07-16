@@ -1,15 +1,7 @@
-import { ASSETS_URL } from "@/constants";
+import { ASSETS_URL } from "@/lib/constants";
 import Image from "next/image";
 
-export default function PostActions({
-  likes,
-  comments,
-  postId,
-}: {
-  likes: number;
-  comments: number;
-  postId: string;
-}) {
+export default function PostActions({ likes, comments, postId }: { likes: number; comments: number; postId: string }) {
   // TODO make a function depending on comment ID to add comments and likes to the post
   console.log(postId);
   return (

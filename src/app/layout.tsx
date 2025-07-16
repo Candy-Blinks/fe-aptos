@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { ReactQueryProvider } from "@/components/ReactQueryProvider";
 import { WalletProvider } from "@/components/WalletProvider";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { WrongNetworkAlert } from "@/components/WrongNetworkAlert";
 import { DM_Sans } from "next/font/google";
 import localFont from "next/font/local";

@@ -15,13 +15,13 @@ import { useStore } from "@/store/store";
 //import useLaunchpadProgram from "@/hooks/programs/useLaunchpadProgram";
 
 // Aptos constants
-const OCTAS_PER_APT = 100_000_000; 
+const OCTAS_PER_APT = 100_000_000;
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_INSTANCE } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import RecentMintedAssets from "@/views/store/recent-minted-assets";
-import { ASSETS_URL } from "@/constants";
+import { ASSETS_URL } from "@/lib/constants";
 import { Countdown } from "@/components/countdown";
 import WorldIcon from "@/components/icons/world";
 import { Separator } from "@/components/ui/separator";
@@ -43,23 +43,11 @@ export default function Store({ params }: StoreProps) {
     collectionName: collection_name,
   });
 
-  const {
-    mintPhases,
-    setMintPhases,
-    setMintCurrentPhase,
-    mintCurrentPhase,
-    mintTab,
-    setMintTab,
-  } = useStore();
+  const { mintPhases, setMintPhases, setMintCurrentPhase, mintCurrentPhase, mintTab, setMintTab } = useStore();
 
   const { account } = useWallet();
 
-  const { 
-    mutateAsync: mintTokenMutation, 
-    isPending, 
-    isSuccess, 
-    isError, 
-  } = useMintToken();
+  const { mutateAsync: mintTokenMutation, isPending, isSuccess, isError } = useMintToken();
 
   // const { data: assets } = useQuery({
   //   queryFn: async () => {
@@ -163,7 +151,7 @@ export default function Store({ params }: StoreProps) {
         collectionName: data?.collection_name,
         tokenName: data?.token_name,
         tokenDescription: data?.token_description,
-        tokenURI: `${data?.token_uri}`, 
+        tokenURI: `${data?.token_uri}`,
       });
       console.log(`Transaction succeeded, hash: ${mintTransactionHash}`);
     } catch (error) {
@@ -214,9 +202,7 @@ export default function Store({ params }: StoreProps) {
                 className="bg-text-100"
               />
             </div>
-            <span className="text-white-16 font-medium text-[16px]">
-              UPCOMING
-            </span>
+            <span className="text-white-16 font-medium text-[16px]">UPCOMING</span>
           </div>
         );
       case "ENDED":
@@ -244,7 +230,6 @@ export default function Store({ params }: StoreProps) {
     // console.log(mintAsset?.error);
   }, []);
 
-
   if (isLoading) return <p>Loading collection...</p>;
   if (error) return <p>{(error as Error).message}</p>;
 
@@ -263,8 +248,8 @@ export default function Store({ params }: StoreProps) {
                       src={
                         // collectionMetadata?.image
                         //   ? collectionMetadata?.image
-                        //   : 
-                          `${ASSETS_URL}candyblinks.png`
+                        //   :
+                        `${ASSETS_URL}candyblinks.png`
                       }
                       alt="Collection Image"
                       fill
@@ -292,7 +277,7 @@ export default function Store({ params }: StoreProps) {
                   <Button
                     className={cn(
                       "ty-subtitle font-semibold bg-transparent hover:bg-pink-100 text-white-50 px-2 py-1 rounded transition ease-in-out duration-200",
-                      mintTab === 0 && "bg-pink-100 text-white-100"
+                      mintTab === 0 && "bg-pink-100 text-white-100",
                     )}
                     onClick={() => setMintTab(0)}
                   >
@@ -301,7 +286,7 @@ export default function Store({ params }: StoreProps) {
                   <Button
                     className={cn(
                       "ty-subtitle font-semibold hover:bg-pink-100 bg-transparent text-white-50 px-2 py-1 rounded transition ease-in-out duration-200",
-                      mintTab === 1 && "bg-pink-100 text-white-100"
+                      mintTab === 1 && "bg-pink-100 text-white-100",
                     )}
                     onClick={() => setMintTab(1)}
                   >
@@ -320,19 +305,11 @@ export default function Store({ params }: StoreProps) {
                           }}
                           className={cn(
                             "w-full p-4 flex flex-col gap-2 rounded-lg bg-white-4 border border-white-4 cursor-pointer transition ease-in-out duration-200",
-                            mintCurrentPhase == phase.label
-                              ? "border border-[#682F2F]"
-                              : ""
+                            mintCurrentPhase == phase.label ? "border border-[#682F2F]" : "",
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <p
-                              className={cn(
-                                "text-[18px] font-semibold text-white-100"
-                              )}
-                            >
-                              {phase.label}
-                            </p>
+                            <p className={cn("text-[18px] font-semibold text-white-100")}>{phase.label}</p>
                             <div>{phaseStatusDisplay(phase)}</div>
                           </div>
 
@@ -348,34 +325,18 @@ export default function Store({ params }: StoreProps) {
                                 />
                               </div>
                               <span className="font-semibold text-[18px]">
-                                {phase.startDate?.timestamp && (
-                                  <Countdown
-                                    unixTimestamp={phase.startDate?.timestamp}
-                                  />
-                                )}
+                                {phase.startDate?.timestamp && <Countdown unixTimestamp={phase.startDate?.timestamp} />}
                               </span>
                             </div>
 
-                            <p
-                              className={cn(
-                                "ty-subtext text-white-100 text-[18px]"
-                              )}
-                            >
-                              {phase.solPayment
-                                ? `APT ${
-                                    phase.solPayment.amount / OCTAS_PER_APT
-                                  }`
-                                : "FREE"}
+                            <p className={cn("ty-subtext text-white-100 text-[18px]")}>
+                              {phase.solPayment ? `APT ${phase.solPayment.amount / OCTAS_PER_APT}` : "FREE"}
                             </p>
                           </div>
                           <div className="w-full">
                             <Progress
                               className=" w-full h-[8px] bg-[#FAFCFF80]"
-                              value={
-                                (data?.number_of_mints ??
-                                  0 / data?.max_supply ??
-                                  0) * 10
-                              }
+                              value={(data?.number_of_mints ?? 0 / data?.max_supply ?? 0) * 10}
                             />
                           </div>
                           <div className="flex items-center justify-between">
@@ -403,14 +364,8 @@ export default function Store({ params }: StoreProps) {
                             </p> */}
                           </div>
                           <div className="flex items-center justify-between">
-                            <p
-                              className={cn(
-                                "text-[14px] font-medium text-white-50"
-                              )}
-                            >
-                              {phase.mintLimit
-                                ? `Max mint: ${phase.mintLimit.limit} per wallet`
-                                : ""}
+                            <p className={cn("text-[14px] font-medium text-white-50")}>
+                              {phase.mintLimit ? `Max mint: ${phase.mintLimit.limit} per wallet` : ""}
                             </p>
                           </div>
                           <div className="flex items-center justify-between"></div>
@@ -450,14 +405,10 @@ export default function Store({ params }: StoreProps) {
                       <Separator className="bg-[#FAFCFF0A]" />
                       <div>
                         <p className="text-[#FAFCFF80]">Supply</p>
-                        <p className="text-white-100 ">
-                          {data?.max_supply}
-                        </p>
+                        <p className="text-white-100 ">{data?.max_supply}</p>
                       </div>
                       <Separator className="bg-[#FAFCFF0A]" />
-                      <p className="text-white-100 ">
-                        {data?.collection_description}
-                      </p>
+                      <p className="text-white-100 ">{data?.collection_description}</p>
                     </div>
                   </div>
                 )}
@@ -565,15 +516,11 @@ export default function Store({ params }: StoreProps) {
 
           <div className="w-full flex flex-col gap-16 items-center h-[510px] justify-center">
             <div className="flex flex-col gap-4 items-center">
-              <p className={cn("ty-h2 text-white-100")}>
-                Candy Store NFTs are in high demand!
-              </p>
+              <p className={cn("ty-h2 text-white-100")}>Candy Store NFTs are in high demand!</p>
               <p className={cn("ty-h2 text-white-100")}>Create yours now!</p>
             </div>
 
-            <Button className={cn("bg-red-400 hover:bg-red-500 ty-title")}>
-              Get Started Now
-            </Button>
+            <Button className={cn("bg-red-400 hover:bg-red-500 ty-title")}>Get Started Now</Button>
           </div>
         </div>
       </div>
@@ -596,13 +543,7 @@ function NftImage({ jsonUrl, number, className }: INftImageProps) {
     return <></>;
   }
   return (
-    <div
-      className={cn(
-        `${
-          className ? className : "size-[150px]"
-        } bg-white-4 rounded-3xl relative`
-      )}
-    >
+    <div className={cn(`${className ? className : "size-[150px]"} bg-white-4 rounded-3xl relative`)}>
       <Image
         src={data?.image ?? `${ASSETS_URL}candyblinks.png`}
         alt="NFT Placeholder"

@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { PINATA } from "@/constants";
+import { PINATA } from "@/lib/constants";
 
 interface IUploadBannerArgs {
   image: File;
@@ -12,5 +12,5 @@ export default function useUploadBanner() {
       return await PINATA.upload.file(image);
     },
   });
-  return { ...mutation }; 
+  return { ...mutation };
 }

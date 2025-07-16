@@ -1,4 +1,4 @@
-import { API_URL } from "@/constants";
+import { API_URL } from "@/lib/constants";
 import { useStore } from "@/store/store";
 import { useQuery } from "@tanstack/react-query";
 
@@ -9,28 +9,27 @@ interface IUseFetchCollection {
   collectionName: string;
 }
 
-export default function useFetchCollection({
-  collectionOwner,
-  collectionName,
-}: IUseFetchCollection) {
+export default function useFetchCollection({ collectionOwner, collectionName }: IUseFetchCollection) {
   // const { setHubCandyStore, setHubCollection } = useStore();
 
   const query = useQuery({
     queryKey: ["collection", collectionOwner, collectionName],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}collections/collection?owner=${collectionOwner}&name=${collectionName}`);
+      const { data } = await axios.get(
+        `${API_URL}collections/collection?owner=${collectionOwner}&name=${collectionName}`,
+      );
 
-    if (!data) {
-      throw Error("No response");
-    }
+      if (!data) {
+        throw Error("No response");
+      }
 
-    if (!collectionOwner) {
-      throw Error("No Collection Owner");
-    }
+      if (!collectionOwner) {
+        throw Error("No Collection Owner");
+      }
 
-    if (!data?.collection_name) {
-      throw Error("No Collection name");
-    }
+      if (!data?.collection_name) {
+        throw Error("No Collection name");
+      }
 
       // setHubCandyStore(candyStoreAddress);
       // setHubCollection(response?.collection);

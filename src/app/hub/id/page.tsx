@@ -8,21 +8,9 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn, formatUnixTimestamp, truncateAddress } from "@/lib/utils";
-import {
-  ChevronDown,
-  Globe,
-  MoveUpRight,
-  Pencil,
-  Search,
-  Twitter,
-  Users,
-} from "lucide-react";
+import { ChevronDown, Globe, MoveUpRight, Pencil, Search, Twitter, Users } from "lucide-react";
 
 import Footer from "@/components/footer";
 import useFetchCandyStore from "@/hooks/api/useFetchCollection";
@@ -30,7 +18,7 @@ import useFetchMetadata from "@/hooks/useFetchMetadata";
 import Link from "next/link";
 import PhaseEditorDialog from "@/views/hub/phase-editor-dialog";
 import { useStore } from "@/store/store";
-import { ASSETS_URL, PINATA_GATEWAY } from "@/constants";
+import { ASSETS_URL, PINATA_GATEWAY } from "@/lib/constants";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_INSTANCE } from "@/lib/api";
 
@@ -76,25 +64,16 @@ export default function Hub() {
   return (
     <>
       <Navbar />
-      <PhaseEditorDialog
-        open={openPhaseEditor}
-        onOpenChange={setOpenPhaseEditor}
-      />
+      <PhaseEditorDialog open={openPhaseEditor} onOpenChange={setOpenPhaseEditor} />
       <div className="w-full flex items-start justify-center min-h-dvh mt-10">
         <div className="max-w-[1280px] w-full flex flex-col gap-8">
           <div className="w-full bg-white-4 border border-white-8 p-8 rounded-xl flex justify-between items-center">
             <div className="flex flex-col gap-1">
-              <p className={cn("ty-title text-white-100")}>
-                Publish Collection
-              </p>
-              <p className={cn("ty-descriptions text-white-50")}>
-                Publish this collection for public viewing.
-              </p>
+              <p className={cn("ty-title text-white-100")}>Publish Collection</p>
+              <p className={cn("ty-descriptions text-white-50")}>Publish this collection for public viewing.</p>
             </div>
 
-            <Button onClick={onPublish}>
-              {candyStore?.published ? "Unpublish" : "Publish"}
-            </Button>
+            <Button onClick={onPublish}>{candyStore?.published ? "Unpublish" : "Publish"}</Button>
           </div>
 
           <div className="w-full bg-white-4 border border-white-8 p-8 rounded-xl flex flex-col gap-8">
@@ -116,16 +95,8 @@ export default function Hub() {
                   <div className="w-[150px] h-[150px] bg-red-50 absolute bottom-0 left-0 rounded-2xl ">
                     <div className="h-full w-full relative">
                       <Image
-                        src={
-                          collectionMetadata?.image
-                            ? collectionMetadata?.image
-                            : "/images/cmb/collection.png"
-                        }
-                        alt={
-                          collectionMetadata?.image
-                            ? collectionMetadata?.image
-                            : "/images/cmb/collection.png"
-                        }
+                        src={collectionMetadata?.image ? collectionMetadata?.image : "/images/cmb/collection.png"}
+                        alt={collectionMetadata?.image ? collectionMetadata?.image : "/images/cmb/collection.png"}
                         fill
                         className="object-cover rounded-2xl "
                       ></Image>
@@ -133,22 +104,16 @@ export default function Hub() {
                   </div>
                   <div className="w-[150px]"></div>
                   <div className="flex flex-col gap-2">
-                    <p className={cn("ty-h6 text-white-100")}>
-                      {candyStore?.name ? candyStore?.name : "Undefined"}
-                    </p>
+                    <p className={cn("ty-h6 text-white-100")}>{candyStore?.name ? candyStore?.name : "Undefined"}</p>
                     <p className={cn("ty-subheading text-white-50")}>
-                      {collectionMetadata?.symbol
-                        ? collectionMetadata?.symbol
-                        : "Undefined"}
+                      {collectionMetadata?.symbol ? collectionMetadata?.symbol : "Undefined"}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <p className={cn("ty-subtitle text-white-50")}>
-                      About the Collection
-                    </p>
+                    <p className={cn("ty-subtitle text-white-50")}>About the Collection</p>
 
                     <Button className="flex items-center gap-4">
                       <Pencil size={5} />
@@ -156,9 +121,7 @@ export default function Hub() {
                     </Button>
                   </div>
                   <p className={cn("ty-descriptions text-white-50")}>
-                    {candyStore?.description
-                      ? candyStore?.description
-                      : "Undefined"}
+                    {candyStore?.description ? candyStore?.description : "Undefined"}
                   </p>
                 </div>
 
@@ -171,14 +134,8 @@ export default function Hub() {
                       <p className={cn("ty-subtitle text-white-50")}>Website</p>
                       {candyStore?.website && (
                         <Link href={candyStore?.website} target="_blank">
-                          <p
-                            className={cn(
-                              "ty-descriptions text-white-100 underline"
-                            )}
-                          >
-                            {candyStore?.website
-                              ? candyStore?.website
-                              : "Undefined"}
+                          <p className={cn("ty-descriptions text-white-100 underline")}>
+                            {candyStore?.website ? candyStore?.website : "Undefined"}
                           </p>
                         </Link>
                       )}
@@ -190,9 +147,7 @@ export default function Hub() {
                       <Users size={16} />
                     </div>
                     <div className="flex flex-col">
-                      <p className={cn("ty-subtitle text-white-50")}>
-                        Socials and Community
-                      </p>
+                      <p className={cn("ty-subtitle text-white-50")}>Socials and Community</p>
                       {/* temp */}
                       {/* //! sample toaset for phase and collection sync toaster */}
                       {/* <Button
@@ -256,9 +211,7 @@ export default function Hub() {
 
                   {candyStore?.phases?.length == 0 && (
                     <div className="border border-white-4 p-4 flex justify-center items-center">
-                      <p className={cn("ty-descriptions text-white-100")}>
-                        No phases yet
-                      </p>
+                      <p className={cn("ty-descriptions text-white-100")}>No phases yet</p>
                     </div>
                   )}
 
@@ -266,15 +219,10 @@ export default function Hub() {
                     <>
                       {candyStore?.phases?.map((phase: any) => {
                         return (
-                          <div
-                            key={phase.label}
-                            className="flex flex-col gap-1 scrollbars-hidden"
-                          >
+                          <div key={phase.label} className="flex flex-col gap-1 scrollbars-hidden">
                             <div className="flex flex-col gap-4 border border-white-4 rounded-[8px] bg-white-4 p-4">
                               <div className="flex justify-between">
-                                <p className={"ty-descriptions text-white-100"}>
-                                  {phase.label}
-                                </p>
+                                <p className={"ty-descriptions text-white-100"}>{phase.label}</p>
                               </div>
 
                               <div className="w-full flex flex-col gap-2 p-4  border border-white-4 rounded-[8px] bg-white-8">
@@ -292,30 +240,14 @@ export default function Hub() {
 
                                     <div className="flex flex-col gap-1">
                                       {phase.startDate?.timestamp && (
-                                        <p
-                                          className={
-                                            "ty-subtitle text-white-100"
-                                          }
-                                        >
-                                          Start:{" "}
-                                          {formatUnixTimestamp(
-                                            Math.floor(
-                                              phase.startDate?.timestamp
-                                            )
-                                          )}
+                                        <p className={"ty-subtitle text-white-100"}>
+                                          Start: {formatUnixTimestamp(Math.floor(phase.startDate?.timestamp))}
                                         </p>
                                       )}
 
                                       {phase.endDate?.timestamp && (
-                                        <p
-                                          className={
-                                            "ty-subtitle text-white-100"
-                                          }
-                                        >
-                                          End:{" "}
-                                          {formatUnixTimestamp(
-                                            Math.floor(phase.endDate?.timestamp)
-                                          )}
+                                        <p className={"ty-subtitle text-white-100"}>
+                                          End: {formatUnixTimestamp(Math.floor(phase.endDate?.timestamp))}
                                         </p>
                                       )}
                                     </div>
@@ -334,9 +266,7 @@ export default function Hub() {
                                       />
                                     </div>
 
-                                    <p className={"ty-subtitle text-white-100"}>
-                                      {phase.mintLimit.limit} per wallet
-                                    </p>
+                                    <p className={"ty-subtitle text-white-100"}>{phase.mintLimit.limit} per wallet</p>
                                   </div>
                                 )}
 
@@ -352,9 +282,7 @@ export default function Hub() {
                                       />
                                     </div>
 
-                                    <p className={"ty-subtitle text-white-100"}>
-                                      {phase.allocation.limit} max mint
-                                    </p>
+                                    <p className={"ty-subtitle text-white-100"}>{phase.allocation.limit} max mint</p>
                                   </div>
                                 )}
 
@@ -369,16 +297,14 @@ export default function Hub() {
                                     />
                                   </div>
 
-                                  {(phase.aptosPayment || phase.solPayment) ? (
+                                  {phase.aptosPayment || phase.solPayment ? (
                                     <p className={"ty-subtitle text-white-100"}>
-                                      {Number((phase.aptosPayment?.amount ?? phase.solPayment?.amount ?? 0)) /
+                                      {Number(phase.aptosPayment?.amount ?? phase.solPayment?.amount ?? 0) /
                                         OCTAS_PER_APT}{" "}
                                       APT
                                     </p>
                                   ) : (
-                                    <p className={"ty-subtitle text-white-100"}>
-                                      Free
-                                    </p>
+                                    <p className={"ty-subtitle text-white-100"}>Free</p>
                                   )}
                                 </div>
 
@@ -393,9 +319,7 @@ export default function Hub() {
                                         className="text-white-100"
                                       />
                                     </div>
-                                    <p className={"ty-subtitle text-white-100"}>
-                                      10,000 wallets
-                                    </p>
+                                    <p className={"ty-subtitle text-white-100"}>10,000 wallets</p>
                                     <p>NOT DONE</p>
                                   </div>
                                 )}
@@ -437,16 +361,12 @@ export default function Hub() {
                 </div> */}
 
                 <div className="flex flex-col gap-4">
-                  <p className={cn("ty-subtitle text-white-100 ")}>
-                    Collection Information
-                  </p>
+                  <p className={cn("ty-subtitle text-white-100 ")}>Collection Information</p>
 
                   <div className="w-full rounded-3xl border border-white-4 flex flex-col gap-4 p-4">
                     <div className="flex w-full justify-between">
                       <p className={cn("ty-subtitle text-white-50 ")}>Items</p>
-                      <p className={cn("ty-title text-white-100 ")}>
-                        {candyStore?.numberOfItems ?? 0}
-                      </p>
+                      <p className={cn("ty-title text-white-100 ")}>{candyStore?.numberOfItems ?? 0}</p>
                     </div>
 
                     {/* <div className="flex w-full justify-between">
@@ -457,14 +377,10 @@ export default function Hub() {
                     </div> */}
 
                     <div className="flex w-full justify-between">
-                      <p className={cn("ty-subtitle text-white-50 ")}>
-                        Creator
-                      </p>
+                      <p className={cn("ty-subtitle text-white-50 ")}>Creator</p>
 
                       <div className="flex items-center gap-1 underline">
-                        <p className={cn("ty-title text-white-100 ")}>
-                          {truncateAddress(candyStore?.owner ?? "")}
-                        </p>
+                        <p className={cn("ty-title text-white-100 ")}>{truncateAddress(candyStore?.owner ?? "")}</p>
 
                         <MoveUpRight size={16} />
                       </div>
@@ -532,19 +448,9 @@ export default function Hub() {
           <div className="bg-white-4 border border-white-8 p-6 rounded-xl flex flex-col gap-4">
             <div className="w-full flex justify-between items-center">
               <div className="flex items-center gap-4 bg-white-4 p-2 rounded-lg">
-                <p
-                  className={cn(
-                    "ty-subtitle text-white-50 bg-pink-100 p-1 rounded"
-                  )}
-                >
-                  All
-                </p>
-                <p className={cn("ty-subtitle text-white-50 p-1 rounded")}>
-                  Minted
-                </p>
-                <p className={cn("ty-subtitle text-white-50 p-1 rounded")}>
-                  Not Minted
-                </p>
+                <p className={cn("ty-subtitle text-white-50 bg-pink-100 p-1 rounded")}>All</p>
+                <p className={cn("ty-subtitle text-white-50 p-1 rounded")}>Minted</p>
+                <p className={cn("ty-subtitle text-white-50 p-1 rounded")}>Not Minted</p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -554,17 +460,13 @@ export default function Hub() {
                       Sort By <ChevronDown />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent>
-                    Place content for the popover here.
-                  </PopoverContent>
+                  <PopoverContent>Place content for the popover here.</PopoverContent>
                 </Popover>
                 <div className="max-w-[150px] flex items-center gap-1 bg-white-4 shadow-lg rounded-lg border border-white-4 py-1 px-2">
                   <Search size={16} />
 
                   <Input
-                    className={cn(
-                      "w-full h-full placeholder:ty-descriptions text-white-32 bg-transparent"
-                    )}
+                    className={cn("w-full h-full placeholder:ty-descriptions text-white-32 bg-transparent")}
                     placeholder="Search by name"
                   />
                 </div>
@@ -573,13 +475,7 @@ export default function Hub() {
 
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: 9 }, (_, i) => i + 1).map((value) => {
-                return (
-                  <NftCard
-                    jsonUrl={candyStore?.url}
-                    key={value}
-                    number={value - 1}
-                  />
-                );
+                return <NftCard jsonUrl={candyStore?.url} key={value} number={value - 1} />;
               })}
             </div>
           </div>
@@ -609,12 +505,7 @@ function NftCard({ jsonUrl, number }: INftCardProps) {
     <div className="p-3 basis-[19.4%] gap-2 bg-white-4 rounded-lg shadow-lg flex flex-col w-fit items-center cursor-pointer hover:shadow-pink-600/50 hover:border-pink-600 transition duration-200 ease-in-out">
       <div className="p-1 w-full flex items-center justify-center bg-black-4">
         <div className="h-[180px] w-[180px] bg-red-200 rounded-2xl relative">
-          <Image
-            src={data?.image ?? null}
-            alt={data?.image ?? null}
-            fill
-            className="object-cover rounded-2xl"
-          ></Image>
+          <Image src={data?.image ?? null} alt={data?.image ?? null} fill className="object-cover rounded-2xl"></Image>
         </div>
       </div>
 

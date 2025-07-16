@@ -109,7 +109,7 @@ interface ConnectWalletDialogProps {
   close: () => void;
 }
 
-function ConnectWalletDialog({ close }: ConnectWalletDialogProps) {
+export function ConnectWalletDialog({ close }: ConnectWalletDialogProps) {
   const { wallets = [] } = useWallet();
   const { aptosConnectWallets, availableWallets, installableWallets } =
     groupAndSortWallets(wallets);

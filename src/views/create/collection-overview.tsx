@@ -12,7 +12,7 @@ import WorldIcon from "@/components/icons/world";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { ASSETS_URL, PINATA_GATEWAY } from "@/constants";
+import { ASSETS_URL, PINATA_GATEWAY } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 //import useLaunchpadProgram from "@/hooks/programs/useLaunchpadProgram";
@@ -23,8 +23,7 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import useCreateCollection from "@/hooks/useCreateCollection";
 
 export default function CollectionOverview() {
-  const { control, watch, getValues, reset } =
-    useFormContext<ICollectionInformationSchema>();
+  const { control, watch, getValues, reset } = useFormContext<ICollectionInformationSchema>();
   const {
     imageManifestId,
     jsonManifestId,
@@ -39,36 +38,22 @@ export default function CollectionOverview() {
 
   const { account } = useWallet();
 
-  const { 
-    mutateAsync: createCollectionMutation, 
-    isPending, 
-    isSuccess, 
-    isError, 
-    error 
-  } = useCreateCollection();
+  const { mutateAsync: createCollectionMutation, isPending, isSuccess, isError, error } = useCreateCollection();
 
   const collectionImage = useMemo(
-    () =>
-      `${PINATA_GATEWAY}ipfs/${imageManifestId}/collection.${
-        createUploadedImages[0].name.split(".")[1]
-      }`,
-    [imageManifestId]
+    () => `${PINATA_GATEWAY}ipfs/${imageManifestId}/collection.${createUploadedImages[0].name.split(".")[1]}`,
+    [imageManifestId],
   );
 
   const { data: collectionJson } = useQuery({
     queryFn: async () => {
-      const { data } = await axios.get(
-        `${PINATA_GATEWAY}ipfs/${jsonManifestId}/collection.json`
-      );
+      const { data } = await axios.get(`${PINATA_GATEWAY}ipfs/${jsonManifestId}/collection.json`);
 
       console.log(data);
 
       return data;
     },
-    queryKey: [
-      "json",
-      `${PINATA_GATEWAY}ipfs/${imageManifestId}/collection.json`,
-    ],
+    queryKey: ["json", `${PINATA_GATEWAY}ipfs/${imageManifestId}/collection.json`],
   });
 
   const { fields } = useFieldArray({
@@ -126,11 +111,7 @@ export default function CollectionOverview() {
 
   return (
     <>
-      <LoadingDialog
-        title="Deploying"
-        open={openLoading}
-        onOpenChange={setOpenLoading}
-      />
+      <LoadingDialog title="Deploying" open={openLoading} onOpenChange={setOpenLoading} />
       <SuccessDialog
         title="Collection successfully deployed!"
         open={openSuccess}
@@ -164,11 +145,7 @@ export default function CollectionOverview() {
               <div className="w-[150px] h-[150px] bg-gray-700 rounded-2xl absolute bottom-[-20px] left-2">
                 <div className="relative w-full h-full rounded-2xl">
                   <Image
-                    src={
-                      collectionImage
-                        ? collectionImage
-                        : "/images/sm-placeholder.png"
-                    }
+                    src={collectionImage ? collectionImage : "/images/sm-placeholder.png"}
                     alt={collectionImage}
                     fill
                     className="object-cover rounded-2xl"
@@ -179,12 +156,8 @@ export default function CollectionOverview() {
 
               <div className="flex justify-between w-full">
                 <div className="flex flex-col gap-1">
-                  <p className={cn("ty-h6 text-[20px]")}>
-                    {watch("collectionName")}
-                  </p>
-                  <p className={cn("ty-subheading text-[18px]")}>
-                    {watch("collectionSymbol")}
-                  </p>
+                  <p className={cn("ty-h6 text-[20px]")}>{watch("collectionName")}</p>
+                  <p className={cn("ty-subheading text-[18px]")}>{watch("collectionSymbol")}</p>
                 </div>
 
                 <Button
@@ -201,14 +174,8 @@ export default function CollectionOverview() {
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-4 p-4">
-                <p className={cn("ty-subtitle text-[16px]")}>
-                  About the Collection
-                </p>
-                <p
-                  className={cn(
-                    "ty-descriptions text-[14px] text-opacity-50 text-[#F4FAFD80]"
-                  )}
-                >
+                <p className={cn("ty-subtitle text-[16px]")}>About the Collection</p>
+                <p className={cn("ty-descriptions text-[14px] text-opacity-50 text-[#F4FAFD80]")}>
                   {watch("collectionDescription")}
                 </p>
               </div>
@@ -219,12 +186,8 @@ export default function CollectionOverview() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <p className={cn("ty-subtitle text-[#F4FAFD80]")}>
-                      Website
-                    </p>
-                    <p className={cn("ty-descriptions underline")}>
-                      {watch("website")}
-                    </p>
+                    <p className={cn("ty-subtitle text-[#F4FAFD80]")}>Website</p>
+                    <p className={cn("ty-descriptions underline")}>{watch("website")}</p>
                   </div>
                 </div>
 
@@ -234,9 +197,7 @@ export default function CollectionOverview() {
                   </div>
 
                   <div className="flex flex-col gap-1 justify-between">
-                    <p className={cn("ty-subtitle text-[#F4FAFD80]")}>
-                      Socials and Community
-                    </p>
+                    <p className={cn("ty-subtitle text-[#F4FAFD80]")}>Socials and Community</p>
                     <div className="flex items-center gap-2 text-white-100">
                       {watch("discord") && (
                         <Link href={watch("discord")} target="_blank">
@@ -299,9 +260,7 @@ export default function CollectionOverview() {
               </div>
 
               <div className="flex flex-col gap-4 p-4">
-                <p className={cn("ty-title text-[18px]")}>
-                  Secondary Royalties
-                </p>
+                <p className={cn("ty-title text-[18px]")}>Secondary Royalties</p>
 
                 <div className="flex flex-col gap-4">
                   <div className="w-full flex justify-between gap-4">
@@ -309,18 +268,13 @@ export default function CollectionOverview() {
                       <p className={cn("ty-subtitle text-[16px]")}>Shares</p>
                     </div>
                     <div className="w-full">
-                      <p className={cn("ty-subtitle text-[16px]")}>
-                        Wallet Address
-                      </p>
+                      <p className={cn("ty-subtitle text-[16px]")}>Wallet Address</p>
                     </div>
                   </div>
 
                   {fields.map((e) => {
                     return (
-                      <div
-                        key={e.id}
-                        className="w-full flex justify-between gap-4"
-                      >
+                      <div key={e.id} className="w-full flex justify-between gap-4">
                         <div className="basis-[10%] p-2 bg-black-50 text-[14px]">
                           <p className={cn("ty-subtext")}>{e.shares}%</p>
                         </div>
@@ -351,11 +305,7 @@ export default function CollectionOverview() {
             <div className="p-4 flex flex-col items-center gap-4 rounded-xl bg-white-4 w-[235px]">
               <div className="w-[200px] h-[200px] bg-white-16 rounded-2xl relative">
                 <Image
-                  src={
-                    collectionImage
-                      ? collectionImage
-                      : "/images/placeholder.png"
-                  }
+                  src={collectionImage ? collectionImage : "/images/placeholder.png"}
                   alt={collectionImage}
                   fill
                   blurDataURL="/images/placeholder.png"
@@ -365,13 +315,8 @@ export default function CollectionOverview() {
 
               {/* {JSON.stringify(collectionJson)} */}
               <div className="flex flex-col gap-1 w-full">
-                <p className={cn("ty-title text-white-100")}>
-                  {" "}
-                  {collectionJson?.symbol}
-                </p>
-                <p className={cn("ty-subtext text-white-100")}>
-                  {collectionJson?.name}
-                </p>
+                <p className={cn("ty-title text-white-100")}> {collectionJson?.symbol}</p>
+                <p className={cn("ty-subtext text-white-100")}>{collectionJson?.name}</p>
                 {/* <p className={cn("ty-subtext text-white-100")}>5 Attributes</p> */}
               </div>
             </div>
