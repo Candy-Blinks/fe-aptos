@@ -2,13 +2,13 @@
 
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import Navbar from "@/components/navbar"; 
-import HeroSection from "@/components/hero-section";
-import FeaturedCollection from "@/components/feature-collection";
-import NewNftCollections from "@/components/new-nft-collections";
-import AlmostMintedCollections from "@/components/almost-minted-collections";
-import LeadingCreators from "@/components/leading-creators";
-import ExploreCollections from "@/components/explore-collections";
-import GetStarted from "@/components/get-started";
+import HeroSection from "@/views/hero-section";
+import FeaturedCollection from "@/views/feature-collection";
+import NewNftCollections from "@/views/new-nft-collections";
+import AlmostMintedCollections from "@/views/almost-minted-collections";
+import LeadingCreators from "@/views/leading-creators";
+import ExploreCollections from "@/views/explore-collections";
+import GetStarted from "@/views/get-started";
 import Footer from "@/components/footer";
 
 function App() {

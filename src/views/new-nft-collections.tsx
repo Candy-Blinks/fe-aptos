@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 //import useLaunchpadProgram from "@/hooks/programs/useLaunchpadProgram";
-import CandyStoreCard from "@/components/candy-store-card";
+import CandyStoreCard from "./candy-store-card";
 import Link from "next/link";
 
 export default function NewNftCollections() {

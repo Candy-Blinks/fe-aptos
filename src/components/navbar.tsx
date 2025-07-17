@@ -4,7 +4,7 @@ import Image from "next/image";
 import React from "react";
 import { ASSETS_URL } from "@/lib/constants";
 import Link from "next/link";
-import { WalletSelector } from "./WalletSelector";
+import { WalletSelector } from "./connect-wallet";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 

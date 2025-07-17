@@ -8,7 +8,7 @@ import Image from "next/image";
 import { ASSETS_URL } from "@/lib/constants";
 import Footer from "@/components/footer";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import { ConnectWalletDialog } from "@/components/WalletSelector"; // Adjust the import path as needed
+import { ConnectWalletDialog } from "@/components/connect-wallet"; // Adjust the import path as needed
 
 export default function WalletToSheets() {
   const [loading, setLoading] = useState<boolean>(false);

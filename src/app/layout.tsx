@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { ReactQueryProvider } from "@/components/ReactQueryProvider";
-import { WalletProvider } from "@/components/WalletProvider";
+import { ReactQueryProvider } from "@/components/provider/react-query-provider";
+import { WalletProvider } from "@/components/provider/wallet-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { WrongNetworkAlert } from "@/components/WrongNetworkAlert";
+import { WrongNetworkAlert } from "@/components/wrong-network-alert";
 import { DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 

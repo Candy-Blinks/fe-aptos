@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Navbar from "@/components/navbar";
-import { WalletSelector } from "./WalletSelector";
+import { WalletSelector } from "./connect-wallet";
 import { ASSETS_URL } from "@/lib/constants";
 
 export default function NoWallet() {
