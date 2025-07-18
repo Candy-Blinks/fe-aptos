@@ -155,7 +155,7 @@ function CandyStoreCard({
 
   return (
     <Link
-      href={`/hub/${publicKey}`}
+      href={`/hub/${publicKey}/${name}`}
       className="p-3 basis-[19.50%] gap-2 bg-white-4 rounded-lg shadow-lg flex flex-col w-fit items-center cursor-pointer hover:ring-1 hover:ring-[#682F2F] transition duration-200 ease-in-out"
     >
       <div className="h-[180px] w-[180px] bg-red-200 rounded-2xl relative">

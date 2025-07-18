@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 
 import Navbar from "@/components/navbar";
 import Image from "next/image";
-import { useParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import { cn, formatUnixTimestamp, truncateAddress } from "@/lib/utils";
 import { ChevronDown, Globe, MoveUpRight, Pencil, Search, Twitter, Users } from "lucide-react";
 
 import Footer from "@/components/footer";
-import useFetchCandyStore from "@/hooks/api/useFetchCollection";
+import useFetchCollection from "@/hooks/api/useFetchCollection";
 import useFetchMetadata from "@/hooks/useFetchMetadata";
 import Link from "next/link";
 import PhaseEditorDialog from "@/views/hub/phase-editor-dialog";
@@ -22,20 +21,35 @@ import { ASSETS_URL, PINATA_GATEWAY } from "@/lib/constants";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_INSTANCE } from "@/lib/api";
 
+
 // Aptos constants
 const OCTAS_PER_APT = 100_000_000; // 1 APT = 100,000,000 Octas
 // import { toast } from "sonner";
 // import LoadingToaster from "@/components/loading-toaster";
 
-export default function Hub() {
-  const params = useParams();
+interface StoreProps {
+  params: {
+    collection_owner: string;
+    collection_name: string;
+  };
+}
 
-  const { data: candyStore } = useFetchCandyStore({
-    candyStoreAddress: params?.id as string,
+export default function Hub({ params }: StoreProps) {
+  const { collection_owner, collection_name } = params;
+
+  const { data: candyStore, isLoading, error, isError } = useFetchCollection({
+    collectionOwner: collection_owner,
+    collectionName: collection_name,
   });
 
+  console.log("API Call params:", { collection_owner, collection_name });
+  console.log("candyStore", candyStore);
+  console.log("candyStore error:", error);
+  console.log("candyStore isLoading:", isLoading);
+  console.log("candyStore isError:", isError);
+
   const { data: collectionMetadata } = useFetchMetadata({
-    url: candyStore?.url ? `${candyStore?.url}/collection.json` : undefined,
+    url: candyStore?.collection_uri ? `${candyStore?.collection_uri}/collection.json` : undefined,
   });
 
   const { setHubPhases } = useStore();
@@ -49,7 +63,7 @@ export default function Hub() {
 
   const { mutate: publish } = useMutation({
     mutationFn: async (published: boolean) => {
-      await API_INSTANCE.patch(`candy-stores/${params?.id as string}/publish`, {
+      await API_INSTANCE.patch(`candy-stores/${params?.collection_owner as string}/publish`, {
         published,
       });
     },
@@ -78,10 +92,10 @@ export default function Hub() {
 
           <div className="w-full bg-white-4 border border-white-8 p-8 rounded-xl flex flex-col gap-8">
             <div className="w-full max-h-[196px] h-[196px] bg-white-8 rounded-3xl relative">
-              {candyStore?.banner && (
+              {candyStore?.collection_uri && (
                 <Image
-                  src={`${PINATA_GATEWAY}ipfs/${candyStore?.banner}`}
-                  alt={`${PINATA_GATEWAY}ipfs/${candyStore?.banner}`}
+                  src={`${PINATA_GATEWAY}ipfs/${candyStore?.uri}`}
+                  alt={`Empty for now`}
                   fill
                   className="object-cover rounded-2xl "
                 />
@@ -104,7 +118,7 @@ export default function Hub() {
                   </div>
                   <div className="w-[150px]"></div>
                   <div className="flex flex-col gap-2">
-                    <p className={cn("ty-h6 text-white-100")}>{candyStore?.name ? candyStore?.name : "Undefined"}</p>
+                    <p className={cn("ty-h6 text-white-100")}>{candyStore?.collection_name ? candyStore?.collection_name : "Undefined"}</p>
                     <p className={cn("ty-subheading text-white-50")}>
                       {collectionMetadata?.symbol ? collectionMetadata?.symbol : "Undefined"}
                     </p>
@@ -121,7 +135,7 @@ export default function Hub() {
                     </Button>
                   </div>
                   <p className={cn("ty-descriptions text-white-50")}>
-                    {candyStore?.description ? candyStore?.description : "Undefined"}
+                    {candyStore?.collection_description ? candyStore?.collection_description : "Undefined"}
                   </p>
                 </div>
 
@@ -297,9 +311,9 @@ export default function Hub() {
                                     />
                                   </div>
 
-                                  {phase.aptosPayment || phase.solPayment ? (
+                                  {phase.aptosPayment || phase.aptosPayment ? (
                                     <p className={"ty-subtitle text-white-100"}>
-                                      {Number(phase.aptosPayment?.amount ?? phase.solPayment?.amount ?? 0) /
+                                      {Number(phase.aptosPayment?.amount ?? phase.aptosPayment?.amount ?? 0) /
                                         OCTAS_PER_APT}{" "}
                                       APT
                                     </p>
@@ -366,7 +380,7 @@ export default function Hub() {
                   <div className="w-full rounded-3xl border border-white-4 flex flex-col gap-4 p-4">
                     <div className="flex w-full justify-between">
                       <p className={cn("ty-subtitle text-white-50 ")}>Items</p>
-                      <p className={cn("ty-title text-white-100 ")}>{candyStore?.numberOfItems ?? 0}</p>
+                      <p className={cn("ty-title text-white-100 ")}>{candyStore?.max_supply ?? 0}</p>
                     </div>
 
                     {/* <div className="flex w-full justify-between">
@@ -380,7 +394,7 @@ export default function Hub() {
                       <p className={cn("ty-subtitle text-white-50 ")}>Creator</p>
 
                       <div className="flex items-center gap-1 underline">
-                        <p className={cn("ty-title text-white-100 ")}>{truncateAddress(candyStore?.owner ?? "")}</p>
+                        <p className={cn("ty-title text-white-100 ")}>{truncateAddress(candyStore?.collection_owner ?? "")}</p>
 
                         <MoveUpRight size={16} />
                       </div>
@@ -475,7 +489,7 @@ export default function Hub() {
 
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: 9 }, (_, i) => i + 1).map((value) => {
-                return <NftCard jsonUrl={candyStore?.url} key={value} number={value - 1} />;
+                return <NftCard jsonUrl={candyStore?.token_uri} key={value} number={value - 1} />;
               })}
             </div>
           </div>
@@ -496,11 +510,10 @@ function NftCard({ jsonUrl, number }: INftCardProps) {
     url: jsonUrl ? `${jsonUrl}/${number}.json` : undefined,
   });
 
-  if (data?.image == "") {
+  if (data?.image == null || data?.image === "") {
     return <></>;
   }
 
-  return <></>;
   return (
     <div className="p-3 basis-[19.4%] gap-2 bg-white-4 rounded-lg shadow-lg flex flex-col w-fit items-center cursor-pointer hover:shadow-pink-600/50 hover:border-pink-600 transition duration-200 ease-in-out">
       <div className="p-1 w-full flex items-center justify-center bg-black-4">

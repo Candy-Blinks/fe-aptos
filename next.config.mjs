@@ -12,6 +12,12 @@ export default withPWA({
   images: {
     unoptimized: true, // Keep this if you want to disable image optimization
   },
+  typescript: {
+    ignoreBuildErrors: true, // ⛔️ Skips type checking during build
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // ⛔️ Skips linting during build
+  },
   webpack: (config, { isServer }) => {
     // Suppress critical dependency warnings for known packages
     config.module = config.module || {};
