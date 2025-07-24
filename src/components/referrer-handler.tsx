@@ -2,22 +2,23 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { useStore } from "@/store/store";
 
-interface ReferrerHandlerProps {
-  referrer: string | null;
-  setReferrer: (referrer: string) => void;
-}
-
-const ReferrerHandler = ({ referrer, setReferrer }: ReferrerHandlerProps) => {
+const ReferrerHandler = () => {
   const searchParams = useSearchParams();
+  const { setOnboardingPayload, onboardingPayload } = useStore();
   const referredByID = searchParams.get("referralid");
-  console.log("referredByID", referredByID == referrer ? "same" : "different", referrer, referredByID);
 
   useEffect(() => {
-    if (referredByID) {
-      setReferrer(referredByID);
+    if (referredByID && !onboardingPayload.referralCode) {
+      // Only set if referral code is not already set to avoid overwriting user input
+      setOnboardingPayload({
+        ...onboardingPayload,
+        referralCode: referredByID,
+      });
+      console.log("Referral code set from URL:", referredByID);
     }
-  }, [referredByID, setReferrer]);
+  }, [referredByID, setOnboardingPayload, onboardingPayload]);
 
   return null;
 };
