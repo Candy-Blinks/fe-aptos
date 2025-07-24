@@ -3,14 +3,29 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store/store";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-// import { useQuery } from "@tanstack/react-query";
-// import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { API_URL } from "@/lib/constants";
+import { toast } from "sonner";
+
+interface CheckAptosAddressResponse {
+  available: boolean;
+  message: string;
+}
+
+// Helper function to properly join URL paths
+const joinUrl = (base: string, path: string) => {
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
+};
 
 export default function ConnectWallet() {
   const { account, connected, disconnect, connect, wallets } = useWallet();
 
   const [isAddressValidated, setIsAddressValidated] = useState(false);
+  const [addressAlreadyRegistered, setAddressAlreadyRegistered] = useState(false);
 
   const {
     setOnboardingPageNumber,
@@ -18,32 +33,59 @@ export default function ConnectWallet() {
     setOnboardingPayload,
   } = useStore();
 
-  // const { data: user, isSuccess: userIsSuccess } = useQuery({
-  //   queryFn: async () => {
-  //     const {
-  //       data: { data },
-  //     } = await axios.get(`${API_URL}users/address/${account?.address?.toString()}`);
-
-  //     console.log(data);
-
-  //     return data;
-  //   },
-  //   queryKey: ["address", account?.address?.toString()],
-  //   enabled: !!account?.address,
-  // });
+  // Check if the connected address is already registered
+  const { data: addressData, isLoading: isCheckingAvailability, error: availabilityError } = useQuery({
+    queryFn: async (): Promise<CheckAptosAddressResponse> => {
+      const { data } = await axios.get(joinUrl(API_URL, '/api/users/check-aptos-address'), {
+        params: {
+          aptos_address: account?.address?.toString(),
+        },
+        headers: {
+          'cb-api-key': process.env.NEXT_PUBLIC_API_KEY || 'your-dev-api-key',
+        },
+      });
+      return data;
+    },
+    queryKey: ["checkAptosAddress", account?.address?.toString()],
+    enabled: !!account?.address && connected,
+    retry: false,
+  });
 
   useEffect(() => {
-    // if (userIsSuccess && user?.length === 0 && account?.address) {
-    if (account?.address && !isAddressValidated) {
-      setOnboardingPayload({
-        address: account.address.toString(),
-        referralCode: undefined,
-        profilePic: "",
-        username: "",
-      });
-      setIsAddressValidated(true);
+    if (addressData && account?.address) {
+      if (!addressData.available) {
+        setAddressAlreadyRegistered(true);
+        toast.error("This Aptos address is already registered. Please use a different wallet or sign in to your existing account.");
+      } else {
+        setAddressAlreadyRegistered(false);
+        if (!isAddressValidated) {
+          setOnboardingPayload({
+            address: account.address.toString(),
+            referralCode: undefined,
+            profilePic: "",
+            username: "",
+          });
+          setIsAddressValidated(true);
+          toast.success("Wallet connected! You can proceed with registration.");
+        }
+      }
     }
-  }, [account?.address, setOnboardingPayload, isAddressValidated]);
+  }, [addressData, account?.address, setOnboardingPayload, isAddressValidated]);
+
+  useEffect(() => {
+    if (availabilityError) {
+      console.error("Error checking address availability:", availabilityError);
+      toast.error("Failed to verify address. Please try again.");
+    }
+  }, [availabilityError]);
+
+  // Reset states when wallet disconnects
+  useEffect(() => {
+    if (!connected) {
+      setIsAddressValidated(false);
+      setAddressAlreadyRegistered(false);
+    }
+  }, [connected]);
 
   const handleConnectClick = async () => {
     try {
@@ -70,12 +112,12 @@ export default function ConnectWallet() {
           await connect(targetWallet.name);
         } else {
           console.error("No Aptos wallets available. Please install Petra, Martian, or another Aptos wallet.");
-          // You could show a toast or modal here directing users to install a wallet
+          toast.error("No Aptos wallets available. Please install Petra, Martian, or another Aptos wallet.");
         }
       }
     } catch (error) {
       console.error("Failed to connect/disconnect wallet:", error);
-      // You could show an error toast here
+      toast.error("Failed to connect wallet. Please try again.");
     }
   };
 
@@ -85,16 +127,14 @@ export default function ConnectWallet() {
         Connect Wallet
       </p>
       <div className="w-full">
-        {/* <Button ref={walletButtonRef} className="hidden"> */}
-          {/* <WalletMultiButton ref={walletButtonRef} className="hidden"/> */}
-        {/* </Button> */}
         <Button
           onClick={handleConnectClick}
           className={cn(
             "font-semibold text-[31px] h-[82px] w-full  text-black-100 hover:bg-white-80",
             {
               "bg-white-50": !connected,
-              "bg-white-100": connected,
+              "bg-white-100": connected && !addressAlreadyRegistered,
+              "bg-red-500": connected && addressAlreadyRegistered,
             }
           )}
         >
@@ -107,21 +147,35 @@ export default function ConnectWallet() {
             <p className="text-start text-pink-16">
               Connect your wallet to proceed!
             </p>
+          ) : isCheckingAvailability ? (
+            <p className="text-start text-yellow-400">
+              Verifying address...
+            </p>
+          ) : addressAlreadyRegistered ? (
+            <p className="text-start text-red-400">
+              Address already registered!
+            </p>
           ) : (
-            <p className="text-start text-pink-16">Wallet Connected!</p>
+            <p className="text-start text-green-400">
+              Wallet Connected & Verified!
+            </p>
           )}
         </div>
       </div>
       <Button
-        disabled={!account?.address}
+        disabled={!account?.address || isCheckingAvailability || addressAlreadyRegistered}
         onClick={() => {
           setOnboardingPageNumber(onboardingPageNumber + 1);
         }}
         className={cn(
-          "text-[20px] uppercase font-semibold h-[82px] w-full bg-pink-50 text-white-100 hover:bg-pink-80 border border-pink-50"
+          "text-[20px] uppercase font-semibold h-[82px] w-full text-white-100 hover:bg-pink-80 border border-pink-50",
+          {
+            "bg-pink-50": !account?.address || isCheckingAvailability || addressAlreadyRegistered,
+            "bg-pink-100": account?.address && !isCheckingAvailability && !addressAlreadyRegistered,
+          }
         )}
       >
-        Continue
+        {isCheckingAvailability ? "Verifying..." : "Continue"}
       </Button>
     </>
   );
