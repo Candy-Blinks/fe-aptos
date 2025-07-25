@@ -42,6 +42,7 @@ import {
   User,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+import Link from "next/link";
 
 export function WalletSelector() {
   const { account, connected, disconnect, wallet } = useWallet();
@@ -78,18 +79,14 @@ export function WalletSelector() {
         <DropdownMenuItem onSelect={copyAddress} className="gap-2">
           <Copy className="h-4 w-4" /> Copy address
         </DropdownMenuItem>
-        {wallet && isAptosConnectWallet(wallet) && (
-          <DropdownMenuItem asChild>
-            <a
-              href={APTOS_CONNECT_ACCOUNT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex gap-2"
-            >
-              <User className="h-4 w-4" /> Account
-            </a>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem>
+          <Link
+            href={`/profile/${account?.address.toStringLong()}`}
+            className="flex gap-2"
+          >
+            <User className="h-4 w-4" /> Account
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={disconnect} className="gap-2">
           <LogOut className="h-4 w-4" /> Disconnect
         </DropdownMenuItem>

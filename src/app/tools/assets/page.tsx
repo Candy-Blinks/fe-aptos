@@ -1,16 +1,14 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { Slider } from "@/components/ui/slider"
-import { Upload, Download, ImageIcon, Trash2, Eye, Settings } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import JSZip from "jszip"
+import Navbar from "@/components/navbar"
+import UploadContent from "@/views/tools/assets/upload"
+import Layer from "@/views/tools/assets/layer"
+import Rarity from "@/views/tools/assets/rarity"
+import Generate from "@/views/tools/assets/generate"
+import Preview from "@/views/tools/assets/preview"
 
 interface Asset {
   id: string
@@ -26,7 +24,7 @@ interface TraitCategory {
 }
 
 interface GeneratedNFT {
-  id: number
+  id: number | string 
   traits: { [category: string]: Asset }
   canvas?: HTMLCanvasElement
 }
@@ -56,24 +54,41 @@ const DEFAULT_RARITY_MAPPING: RarityMapping = {
 export default function NFTGenerator() {
   const [traitCategories, setTraitCategories] = useState<TraitCategory[]>([])
   const [generatedNFTs, setGeneratedNFTs] = useState<GeneratedNFT[]>([])
+  const [previewGeneratedNFTs, setPreviewGeneratedNFTs] = useState<GeneratedNFT[]>([]) // New state for preview-generated NFTs
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
   const [collectionSize, setCollectionSize] = useState(100)
   const [previewNFT, setPreviewNFT] = useState<GeneratedNFT | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [layerOrder, setLayerOrder] = useState<LayerOrder[]>([])
 
-  const addTraitCategory = useCallback(
-    (categoryName: string) => {
-      if (!traitCategories.find((cat) => cat.name === categoryName)) {
-        setTraitCategories((prev) => [...prev, { name: categoryName, assets: [] }])
-        // Add to layer order with next available order number
-        setLayerOrder((prev) => [...prev, { categoryName, order: prev.length, enabled: true }])
+  const addTraitCategory = useCallback((categoryName: string) => {
+    // Check if category already exists to prevent duplicates
+    const categoryExists = traitCategories.some(cat => cat.name.toLowerCase() === categoryName.toLowerCase())
+    
+    if (!categoryExists) {
+      const newCategory: TraitCategory = {
+        name: categoryName,
+        assets: [],
       }
-    },
-    [traitCategories],
-  )
+      setTraitCategories(prev => [...prev, newCategory])
+      
+      // Add to layer order if not already present
+      setLayerOrder(prev => {
+        const layerExists = prev.some(layer => layer.categoryName.toLowerCase() === categoryName.toLowerCase())
+        if (!layerExists) {
+          return [...prev, {
+            categoryName,
+            order: prev.length,
+            enabled: true,
+          }]
+        }
+        return prev
+      })
+    }
+  }, [traitCategories])
 
   const handleFileUpload = useCallback((categoryName: string, files: FileList) => {
     const newAssets: Asset[] = []
@@ -288,35 +303,52 @@ export default function NFTGenerator() {
 
     const nfts: GeneratedNFT[] = []
     const usedCombinations = new Set<string>()
+    const BATCH_SIZE = 50 // Process 25 NFTs at a time for better performance
 
-    for (let i = 0; i < collectionSize; i++) {
-      let traits: { [category: string]: Asset }
-      let combinationKey: string
-      let attempts = 0
+    for (let batchStart = 0; batchStart < collectionSize; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, collectionSize)
+      const batchSize = batchEnd - batchStart
 
-      // Try to generate unique combination
-      do {
-        traits = generateNFTTraits()
-        combinationKey = Object.values(traits)
-          .map((t) => t.id)
-          .sort()
-          .join("-")
-        attempts++
-      } while (usedCombinations.has(combinationKey) && attempts < 100)
+      // Generate batch in parallel
+      const batchPromises = Array.from({ length: batchSize }, async (_, index) => {
+        const nftIndex = batchStart + index
+        let traits: { [category: string]: Asset }
+        let combinationKey: string
+        let attempts = 0
 
-      if (attempts < 100) {
-        usedCombinations.add(combinationKey)
-      }
+        // Try to generate unique combination
+        do {
+          traits = generateNFTTraits()
+          combinationKey = Object.values(traits)
+            .map((t) => t.id)
+            .sort()
+            .join("-")
+          attempts++
+        } while (usedCombinations.has(combinationKey) && attempts < 100)
 
-      const canvas = await generateNFTImage(traits)
+        if (attempts < 100) {
+          usedCombinations.add(combinationKey)
+        }
 
-      nfts.push({
-        id: i + 1,
-        traits,
-        canvas,
+        const canvas = await generateNFTImage(traits)
+
+        return {
+          id: nftIndex + 1,
+          traits,
+          canvas,
+        }
       })
 
-      setGenerationProgress(((i + 1) / collectionSize) * 100)
+      // Wait for current batch to complete
+      const batchResults = await Promise.all(batchPromises)
+      nfts.push(...batchResults)
+
+      // Update progress
+      const progress = (batchEnd / collectionSize) * 100
+      setGenerationProgress(progress)
+
+      // Small delay to prevent UI freezing and allow progress update
+      await new Promise(resolve => setTimeout(resolve, 10))
     }
 
     setGeneratedNFTs(nfts)
@@ -331,39 +363,90 @@ export default function NFTGenerator() {
   const downloadCollection = useCallback(async () => {
     if (generatedNFTs.length === 0) return
 
-    const zip = new JSZip()
-    const imagesFolder = zip.folder("images")
-    const metadataFolder = zip.folder("metadata")
+    setIsDownloading(true)
+    setDownloadProgress(0)
 
-    for (const nft of generatedNFTs) {
-      if (nft.canvas) {
-        // Add image
-        const imageBlob = await new Promise<Blob>((resolve) => {
-          nft.canvas!.toBlob((blob) => resolve(blob!), "image/png")
+    try {
+      const zip = new JSZip()
+      const imagesFolder = zip.folder("images")
+      const metadataFolder = zip.folder("metadata")
+
+      const totalNFTs = generatedNFTs.length // Use actual generated NFTs count
+      const BATCH_SIZE = 50 // Process 50 NFTs at a time
+      let processedCount = 0
+
+      // Process NFTs in batches for better performance
+      for (let batchStart = 0; batchStart < totalNFTs; batchStart += BATCH_SIZE) {
+        const batchEnd = Math.min(batchStart + BATCH_SIZE, totalNFTs)
+        const batch = generatedNFTs.slice(batchStart, batchEnd)
+
+        // Process batch in parallel
+        const batchPromises = batch.map(async (nft) => {
+          if (nft.canvas) {
+            // Convert canvas to blob in parallel
+            const imageBlob = await new Promise<Blob>((resolve) => {
+              nft.canvas!.toBlob((blob) => resolve(blob!), "image/png", 0.8) // Add compression
+            })
+
+            // Add files to zip
+            imagesFolder?.file(`${nft.id}.png`, imageBlob)
+
+            // Generate metadata
+            const metadata = {
+              name: `NFT #${nft.id}`,
+              description: `Generated NFT with unique traits`,
+              image: `${nft.id}.png`,
+              attributes: Object.entries(nft.traits).map(([trait_type, asset]) => ({
+                trait_type,
+                value: asset.name,
+              })),
+            }
+            metadataFolder?.file(`${nft.id}.json`, JSON.stringify(metadata, null, 2))
+          }
         })
-        imagesFolder?.file(`${nft.id}.png`, imageBlob)
 
-        // Add metadata
-        const metadata = {
-          name: `NFT #${nft.id}`,
-          description: `Generated NFT with unique traits`,
-          image: `${nft.id}.png`,
-          attributes: Object.entries(nft.traits).map(([trait_type, asset]) => ({
-            trait_type,
-            value: asset.name,
-          })),
-        }
-        metadataFolder?.file(`${nft.id}.json`, JSON.stringify(metadata, null, 2))
+        // Wait for current batch to complete
+        await Promise.all(batchPromises)
+        processedCount += batch.length
+
+        // Update progress
+        const progress = (processedCount / totalNFTs) * 90 // 90% for processing files
+        setDownloadProgress(progress)
+
+        // Small delay to prevent UI freezing
+        await new Promise(resolve => setTimeout(resolve, 10))
       }
-    }
 
-    const zipBlob = await zip.generateAsync({ type: "blob" })
-    const url = URL.createObjectURL(zipBlob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `nft-collection-${Date.now()}.zip`
-    a.click()
-    URL.revokeObjectURL(url)
+      // Final step: generating ZIP (10% of progress)
+      setDownloadProgress(95)
+      const zipBlob = await zip.generateAsync({ 
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 3 }, // Faster compression (was 6)
+        streamFiles: true, // Enable streaming for better performance
+      })
+      
+      setDownloadProgress(100)
+      
+      // Download the file
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `nft-collection-${Date.now()}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      // Reset after a short delay
+      setTimeout(() => {
+        setIsDownloading(false)
+        setDownloadProgress(0)
+      }, 1000)
+
+    } catch (error) {
+      console.error("Error downloading collection:", error)
+      setIsDownloading(false)
+      setDownloadProgress(0)
+    }
   }, [generatedNFTs])
 
   const generatePreview = useCallback(async () => {
@@ -372,27 +455,81 @@ export default function NFTGenerator() {
     const traits = generateNFTTraits()
     const canvas = await generateNFTImage(traits)
 
-    setPreviewNFT({
-      id: 0,
+    // Create unique ID to avoid conflicts with generated NFTs
+    const uniqueId = `preview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Create new preview NFT
+    const newPreviewNFT: GeneratedNFT = {
+      id: uniqueId, // Use unique ID instead of sequential number
       traits,
       canvas,
-    })
+    }
+
+    // Add to preview-generated NFTs collection
+    setPreviewGeneratedNFTs(prev => [...prev, newPreviewNFT])
+    
+    // Set as current preview NFT
+    setPreviewNFT(newPreviewNFT)
   }, [traitCategories, generateNFTTraits, generateNFTImage])
+
+  // Transform GeneratedNFT to the format expected by Generate component
+  const transformNFTToDisplayFormat = useCallback((nft: GeneratedNFT) => ({
+    id: nft.id.toString(),
+    name: `NFT #${nft.id}`,
+    imageUrl: nft.canvas ? nft.canvas.toDataURL() : "/placeholder.svg",
+    metadata: {
+      traits: nft.traits,
+    },
+  }), [])
+
+  const handlePreviewNFTChange = useCallback((nft: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    metadata: Record<string, any>;
+  } | null) => {
+    if (!nft) {
+      setPreviewNFT(null)
+      return
+    }
+
+    // Find the original NFT from generated collection
+    const originalNFT = previewGeneratedNFTs.find(n => n.id.toString() === nft.id)
+    if (originalNFT) {
+      setPreviewNFT(originalNFT)
+    } else if (nft.metadata.traits) {
+      // Transform if not found in collection (for preview generation)
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const ctx = canvas.getContext("2d")
+      
+      if (ctx && nft.imageUrl !== "/placeholder.svg") {
+        const img = new Image()
+        img.src = nft.imageUrl
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      }
+
+      setPreviewNFT({
+        id: parseInt(nft.id, 10),
+        traits: nft.metadata.traits,
+        canvas,
+      })
+    }
+  }, [generatedNFTs])
 
   const handleFolderUpload = useCallback((files: FileList) => {
     const newCategories: { [categoryName: string]: TraitCategory } = {}
-
+    
     Array.from(files).forEach((file) => {
       if (file.type.startsWith("image/")) {
-        // Parse the file path: assets/TRAIT/RARITY/filename.ext
         const pathParts = file.webkitRelativePath.split("/")
-
+        
         if (pathParts.length >= 3) {
-          const traitName = pathParts[pathParts.length - 3].toLowerCase()
-          const rarityName = pathParts[pathParts.length - 2].toUpperCase()
-
-          // Get rarity percentage from mapping, default to 25% if not found
-          const rarityPercentage = DEFAULT_RARITY_MAPPING[rarityName] || 25
+          const traitName = pathParts[1].toLowerCase() // Normalize to lowercase
+          const rarityFolder = pathParts[2].toLowerCase()
+          const rarityPercentage = DEFAULT_RARITY_MAPPING[rarityFolder] || 25
 
           const asset: Asset = {
             id: Math.random().toString(36).substr(2, 9),
@@ -415,576 +552,115 @@ export default function NFTGenerator() {
       }
     })
 
-    // Add new categories to state
+    // Add new categories to state, avoiding duplicates
     Object.values(newCategories).forEach((category) => {
-      setTraitCategories((prev) => {
-        const existingCategory = prev.find((cat) => cat.name === category.name)
-        if (existingCategory) {
-          // Merge with existing category
-          return prev.map((cat) =>
-            cat.name === category.name ? { ...cat, assets: [...cat.assets, ...category.assets] } : cat,
-          )
+      setTraitCategories(prev => {
+        const existingIndex = prev.findIndex(cat => cat.name.toLowerCase() === category.name.toLowerCase())
+        
+        if (existingIndex >= 0) {
+          // Category exists, merge assets
+          const updated = [...prev]
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            assets: [...updated[existingIndex].assets, ...category.assets]
+          }
+          return updated
         } else {
-          // Add new category and layer order
-          setLayerOrder((prevLayers) => [
-            ...prevLayers,
-            { categoryName: category.name, order: prevLayers.length, enabled: true },
-          ])
+          // New category, add it
           return [...prev, category]
         }
       })
-    })
 
-    console.log(
-      `Processed folder upload: ${Object.keys(newCategories).length} categories, ${Object.values(newCategories).reduce((sum, cat) => sum + cat.assets.length, 0)} total assets`,
-    )
-  }, [])
+      // Add to layer order if not already present
+      setLayerOrder(prev => {
+        const layerExists = prev.some(layer => layer.categoryName.toLowerCase() === category.name.toLowerCase())
+        if (!layerExists) {
+          return [...prev, {
+            categoryName: category.name,
+            order: prev.length,
+            enabled: true,
+          }]
+        }
+        return prev
+      })
+    })
+  }, [DEFAULT_RARITY_MAPPING])
 
   return (
+    <>
+    <Navbar />
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">NFT Collection Generator</h1>
-        <p className="text-muted-foreground">
-          Upload layered assets, set trait rarities, and generate unique NFT collections
-        </p>
-      </div>
 
-      <Tabs defaultValue="upload" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="upload">Upload Assets</TabsTrigger>
-          <TabsTrigger value="layers">Layer Order</TabsTrigger>
-          <TabsTrigger value="rarity">Set Rarity</TabsTrigger>
-          <TabsTrigger value="generate">Generate</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+      <Tabs defaultValue="upload" className="space-y-6 p-4 bg-white-100/5 rounded-lg">
+        <TabsList className="grid w-full grid-cols-5 bg-black-100">
+          <TabsTrigger className="data-[state=active]:bg-white-16 data-[state=active]:text-pink-50" value="upload">Upload Assets</TabsTrigger>
+          <TabsTrigger className="data-[state=active]:bg-white-16 data-[state=active]:text-pink-50" value="layers">Layer Order</TabsTrigger>
+          <TabsTrigger className="data-[state=active]:bg-white-16 data-[state=active]:text-pink-50" value="rarity">Set Rarity</TabsTrigger>
+          <TabsTrigger className="data-[state=active]:bg-white-16 data-[state=active]:text-pink-50" value="preview">Preview</TabsTrigger>
+          <TabsTrigger className="data-[state=active]:bg-white-16 data-[state=active]:text-pink-50" value="generate">Generate</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upload" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                Upload Trait Assets
-              </CardTitle>
-              <CardDescription>
-                Upload images for different trait categories (background, body, head, accessories, etc.)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Method 1: Individual Category Upload */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">Method 1</Badge>
-                  <h3 className="text-lg font-semibold">Individual Category Upload</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Add categories one by one and upload images for each trait type.
-                </p>
+        <UploadContent 
+          addTraitCategory={addTraitCategory}
+          traitCategories={traitCategories}
+          deleteCategory={deleteCategory}
+          handleFileUpload={handleFileUpload}
+          handleFolderUpload={handleFolderUpload}
+          removeAsset={removeAsset}
+          defaultRarityMapping={DEFAULT_RARITY_MAPPING}
+        />
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter trait category name (e.g., head, body, background)"
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        const input = e.target as HTMLInputElement
-                        if (input.value.trim()) {
-                          addTraitCategory(input.value.trim())
-                          input.value = ""
-                        }
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={() => {
-                      const input = document.querySelector('input[placeholder*="trait category"]') as HTMLInputElement
-                      if (input?.value.trim()) {
-                        addTraitCategory(input.value.trim())
-                        input.value = ""
-                      }
-                    }}
-                  >
-                    Add Category
-                  </Button>
-                </div>
+        <Layer 
+          layerOrder={layerOrder}
+          setLayerOrder={setLayerOrder}
+          moveLayer={moveLayer}
+          toggleLayerEnabled={toggleLayerEnabled}
+          removeLayerCategory={removeLayerCategory}
+          traitCategories={traitCategories}
+        />
 
-                <div className="grid gap-4">
-                  {traitCategories.map((category) => (
-                    <Card key={category.name}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
-                            <CardDescription>{category.assets.length} assets uploaded</CardDescription>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteCategory(category.name)}
-                            className="flex items-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Category
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <Input
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  handleFileUpload(category.name, e.target.files)
-                                }
-                              }}
-                            />
-                          </div>
+        <Rarity
+          traitCategories={traitCategories}
+          updateAssetRarity={updateAssetRarity}
+        />
 
-                          {category.assets.length > 0 && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {category.assets.map((asset) => (
-                                <div key={asset.id} className="relative group">
-                                  <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-                                    <img
-                                      src={asset.url || "/placeholder.svg"}
-                                      alt={asset.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => removeAsset(category.name, asset.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                  <p className="text-sm font-medium mt-2 truncate">{asset.name}</p>
-                                  <Badge variant="secondary" className="text-xs">
-                                    {asset.rarity}% rarity
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
+        <Generate 
+          traitCategories={traitCategories}
+          collectionSize={collectionSize}
+          setCollectionSize={setCollectionSize}
+          isGenerating={isGenerating}
+          generationProgress={generationProgress}
+          isDownloading={isDownloading}
+          downloadProgress={downloadProgress}
+          testImageGeneration={testImageGeneration}
+          generateCollection={generateCollection}
+          downloadCollection={downloadCollection}
+          generatedNFTs={generatedNFTs.map(transformNFTToDisplayFormat)}
+          generatedCount={generatedNFTs.length}
+        />
 
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-
-              {/* Method 2: Folder Structure Upload */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">Method 2</Badge>
-                  <h3 className="text-lg font-semibold">Folder Structure Upload</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Upload an entire assets folder with predefined structure and automatic rarity assignment.
-                </p>
-
-                <Card className="border-dashed border-2">
-                  <CardContent className="p-6">
-                    <div className="text-center space-y-4">
-                      <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                      <div>
-                        <h4 className="text-lg font-semibold">Upload Assets Folder</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Select your assets folder with the structure: assets/TRAIT/RARITY/images
-                        </p>
-                      </div>
-
-                      <Input
-                        type="file"
-                        webkitdirectory="true"
-                        multiple
-                        accept="image/*"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files.length > 0) {
-                            handleFolderUpload(e.target.files)
-                          }
-                        }}
-                        className="max-w-sm mx-auto"
-                      />
-
-                      <div className="text-xs text-muted-foreground space-y-2">
-                        <p>
-                          <strong>Expected folder structure:</strong>
-                        </p>
-                        <div className="bg-muted p-3 rounded text-left font-mono text-xs">
-                          assets/
-                          <br />
-                          ├── body/
-                          <br />│ ├── common/
-                          <br />│ │ ├── body1.png
-                          <br />│ │ └── body2.png
-                          <br />│ ├── rare/
-                          <br />│ │ └── body3.png
-                          <br />│ └── legendary/
-                          <br />│ └── body4.png
-                          <br />
-                          └── head/
-                          <br />
-                          &nbsp;&nbsp;&nbsp;&nbsp;├── common/
-                          <br />
-                          &nbsp;&nbsp;&nbsp;&nbsp;│ └── head1.png
-                          <br />
-                          &nbsp;&nbsp;&nbsp;&nbsp;└── epic/
-                          <br />
-                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── head2.png
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Rarity Mapping</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                      {Object.entries(DEFAULT_RARITY_MAPPING).map(([rarity, percentage]) => (
-                        <div key={rarity} className="flex justify-between p-2 bg-muted rounded">
-                          <span className="font-medium">{rarity}</span>
-                          <span>{percentage}%</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Folder names not in this list will default to 25% rarity
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="layers" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Configure Layer Order
-              </CardTitle>
-              <CardDescription>
-                Drag to reorder layers. Top layers will be drawn first (background), bottom layers last (foreground).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {layerOrder.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No trait categories yet. Add some categories in the Upload Assets tab first.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {layerOrder
-                    .sort((a, b) => a.order - b.order)
-                    .map((layer, index) => (
-                      <div
-                        key={layer.categoryName}
-                        className={`flex items-center gap-4 p-4 border rounded-lg ${
-                          layer.enabled ? "bg-background" : "bg-muted/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="min-w-[40px] text-center">
-                            {index + 1}
-                          </Badge>
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => moveLayer(index, Math.max(0, index - 1))}
-                              disabled={index === 0}
-                              className="h-6 w-6 p-0"
-                            >
-                              ↑
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => moveLayer(index, Math.min(layerOrder.length - 1, index + 1))}
-                              disabled={index === layerOrder.length - 1}
-                              className="h-6 w-6 p-0"
-                            >
-                              ↓
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium capitalize">{layer.categoryName}</h3>
-                            <Badge variant={layer.enabled ? "default" : "secondary"}>
-                              {layer.enabled ? "Enabled" : "Disabled"}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {traitCategories.find((cat) => cat.name === layer.categoryName)?.assets.length || 0} assets
-                          </p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => toggleLayerEnabled(layer.categoryName)}>
-                            {layer.enabled ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeLayerCategory(layer.categoryName)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              {layerOrder.length > 0 && (
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Layer Order Preview:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {layerOrder
-                      .filter((layer) => layer.enabled)
-                      .sort((a, b) => a.order - b.order)
-                      .map((layer, index) => (
-                        <Badge key={layer.categoryName} variant="outline">
-                          {index + 1}. {layer.categoryName}
-                        </Badge>
-                      ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    This is the order layers will be drawn (left = background, right = foreground)
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rarity" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Configure Trait Rarity
-              </CardTitle>
-              <CardDescription>
-                Set the rarity percentage for each trait. Higher values make traits more common.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {traitCategories.map((category) => (
-                <div key={category.name} className="space-y-4">
-                  <h3 className="text-lg font-semibold capitalize">{category.name}</h3>
-                  <div className="grid gap-4">
-                    {category.assets.map((asset) => (
-                      <div key={asset.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
-                          <img
-                            src={asset.url || "/placeholder.svg"}
-                            alt={asset.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{asset.name}</p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <Label className="text-sm">Rarity:</Label>
-                            <div className="flex-1 max-w-xs">
-                              <Slider
-                                value={[asset.rarity]}
-                                onValueChange={([value]) => updateAssetRarity(category.name, asset.id, value)}
-                                max={100}
-                                min={1}
-                                step={1}
-                                className="flex-1"
-                              />
-                            </div>
-                            <Badge variant="outline" className="min-w-[60px] text-center">
-                              {asset.rarity}%
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="generate" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5" />
-                Generate NFT Collection
-              </CardTitle>
-              <CardDescription>Generate your NFT collection with unique trait combinations</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="collection-size">Collection Size</Label>
-                  <Input
-                    id="collection-size"
-                    type="number"
-                    value={collectionSize}
-                    onChange={(e) => setCollectionSize(Number.parseInt(e.target.value) || 100)}
-                    min={1}
-                    max={10000}
-                    className="max-w-xs"
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">Number of unique NFTs to generate</p>
-                </div>
-
-                {isGenerating && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Generating NFTs...</span>
-                      <span>{Math.round(generationProgress)}%</span>
-                    </div>
-                    <Progress value={generationProgress} />
-                  </div>
-                )}
-
-                <div className="flex gap-4">
-                  <Button onClick={testImageGeneration} disabled={traitCategories.length === 0} variant="outline">
-                    Test Single Image
-                  </Button>
-                  <Button
-                    onClick={generateCollection}
-                    disabled={isGenerating || traitCategories.length === 0}
-                    size="lg"
-                  >
-                    {isGenerating ? "Generating..." : "Generate Collection"}
-                  </Button>
-
-                  {generatedNFTs.length > 0 && (
-                    <Button
-                      onClick={downloadCollection}
-                      variant="outline"
-                      size="lg"
-                      className="flex items-center gap-2 bg-transparent"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download Collection
-                    </Button>
-                  )}
-                </div>
-
-                {generatedNFTs.length > 0 && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-sm">
-                      <strong>Collection Generated!</strong> {generatedNFTs.length} unique NFTs created. Download
-                      includes images and metadata files.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="w-5 h-5" />
-                Preview NFTs
-              </CardTitle>
-              <CardDescription>Preview generated NFTs and their trait combinations</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-4">
-                <Button onClick={generatePreview} disabled={traitCategories.length === 0}>
-                  Generate Random Preview
-                </Button>
-              </div>
-
-              {previewNFT && (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Preview Image</h3>
-                    <div className="aspect-square bg-muted rounded-lg overflow-hidden max-w-md">
-                      {previewNFT.canvas && (
-                        <img
-                          src={previewNFT.canvas.toDataURL() || "/placeholder.svg"}
-                          alt={`NFT #${previewNFT.id}`}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Traits</h3>
-                    <div className="space-y-3">
-                      {Object.entries(previewNFT.traits).map(([category, asset]) => (
-                        <div key={category} className="flex justify-between items-center p-3 border rounded">
-                          <div>
-                            <p className="font-medium capitalize">{category}</p>
-                            <p className="text-sm text-muted-foreground">{asset.name}</p>
-                          </div>
-                          <Badge variant="secondary">{asset.rarity}% rarity</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {generatedNFTs.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Generated Collection</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {generatedNFTs.slice(0, 12).map((nft) => (
-                      <div
-                        key={nft.id}
-                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                        onClick={() => setPreviewNFT(nft)}
-                      >
-                        {nft.canvas && (
-                          <img
-                            src={nft.canvas.toDataURL() || "/placeholder.svg"}
-                            alt={`NFT #${nft.id}`}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {generatedNFTs.length > 12 && (
-                    <p className="text-sm text-muted-foreground mt-4">
-                      Showing first 12 of {generatedNFTs.length} generated NFTs. Click any NFT to preview.
-                    </p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Preview
+          previewGeneratedNFTs={previewGeneratedNFTs.map(transformNFTToDisplayFormat)}
+          previewNFT={previewNFT ? transformNFTToDisplayFormat(previewNFT) : null}
+          setPreviewNFT={handlePreviewNFTChange}
+          generatePreview={generatePreview} 
+          traitCategories={traitCategories.map(cat => ({
+            name: cat.name,
+            assets: cat.assets.map(asset => ({
+              id: asset.id,
+              name: asset.name,
+              imageUrl: asset.url,
+              metadata: {
+                rarity: asset.rarity,
+                file: asset.file,
+              },
+            })),
+          }))}
+        />
       </Tabs>
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
+    </>
   )
 }
