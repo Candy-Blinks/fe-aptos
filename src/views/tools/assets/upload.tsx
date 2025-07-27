@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Trash2, Upload, FolderOpen, Plus, CloudUpload } from "lucide-react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 
 type UploadContentProps = {
   addTraitCategory: (categoryName: string) => void;
@@ -41,16 +41,103 @@ export default function UploadContent({
     setIsDragOver(false)
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsDragOver(false)
 
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      handleFolderUpload(files)
+    console.log('Drop event triggered');
+    
+    // Handle DataTransfer items for folder drops
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      const items = Array.from(e.dataTransfer.items);
+      console.log('Items dropped:', items.length);
+      
+      // Process each item
+      const folderPromises = items.map(item => {
+        if (item.kind === 'file') {
+          const entry = item.webkitGetAsEntry();
+          if (entry) {
+            return processEntry(entry);
+          }
+        }
+        return Promise.resolve([]);
+      });
+      
+      Promise.all(folderPromises).then(fileArrays => {
+        const allFiles = fileArrays.flat();
+        console.log('Total files from folders:', allFiles.length);
+        
+        if (allFiles.length > 0) {
+          // Convert to FileList-like object
+          const fileList = Object.assign(allFiles, {
+            length: allFiles.length,
+            item: (index: number) => allFiles[index] || null,
+            [Symbol.iterator]: function* (): Iterator<File> {
+              for (let i = 0; i < allFiles.length; i++) {
+                yield allFiles[i];
+              }
+            }
+          }) as FileList;
+
+          
+          handleFolderUpload(fileList);
+        } else {
+          console.log('No files found in dropped folders');
+        }
+      }).catch(error => {
+        console.error('Error processing dropped folders:', error);
+      });
+    } else {
+      // Fallback to regular file drop
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        console.log('Regular files dropped:', files.length);
+        handleFolderUpload(files);
+      }
     }
-  }
+  }, [handleFolderUpload]);
+
+  const processEntry = (entry: any): Promise<File[]> => {
+    return new Promise((resolve) => {
+      if (entry.isFile) {
+        entry.file((file: File) => {
+          // Add the webkitRelativePath property
+          Object.defineProperty(file, 'webkitRelativePath', {
+            value: entry.fullPath.substring(1), // Remove leading slash
+            writable: false,
+            enumerable: true,
+            configurable: true
+          });
+          resolve([file]);
+        }, (error: any) => {
+          console.error('Error reading file:', error);
+          resolve([]);
+        });
+      } else if (entry.isDirectory) {
+        const dirReader = entry.createReader();
+        const readEntries = () => {
+          dirReader.readEntries((entries: any[]) => {
+            if (entries.length === 0) {
+              resolve([]);
+              return;
+            }
+            
+            const promises = entries.map(processEntry);
+            Promise.all(promises).then(results => {
+              resolve(results.flat());
+            });
+          }, (error: any) => {
+            console.error('Error reading directory:', error);
+            resolve([]);
+          });
+        };
+        readEntries();
+      } else {
+        resolve([]);
+      }
+    });
+  };
 
   const renderMethodSelection = () => (
     <Card className="bg-black-100 text-white border-0">
@@ -127,7 +214,7 @@ export default function UploadContent({
         <div className="flex gap-2">
           <Input
             placeholder="Enter trait category name (e.g., head, body, background)"
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const input = e.target as HTMLInputElement
                 if (input.value.trim()) {
@@ -150,45 +237,60 @@ export default function UploadContent({
           </Button>
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 ">
           {traitCategories.map((category) => (
-            <Card className="bg-black-100 text-white border-0" key={category.name}>
+            <Card className="bg-black-100 text-white border border-white-16 p-4 rounded-lg " key={category.name}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg capitalize">{category.name}</CardTitle>
                     <CardDescription>{category.assets.length} assets uploaded</CardDescription>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => deleteCategory(category.name)}
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Category
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const fileInput = document.getElementById(`file-input-${category.name}`) as HTMLInputElement;
+                        fileInput?.click();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Assets
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => deleteCategory(category.name)}
+                      className="flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Category
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <Input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          handleFileUpload(category.name, e.target.files)
-                        }
-                      }}
-                    />
-                  </div>
+                  {/* Hidden file input */}
+                  <Input
+                    id={`file-input-${category.name}`}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        handleFileUpload(category.name, e.target.files)
+                      }
+                    }}
+                    className="hidden"
+                  />
 
                   {category.assets.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ">
                       {category.assets.map((asset) => (
-                        <div key={asset.id} className="relative group">
+                        <div key={asset.id} className="relative group border border-white-16 p-4 rounded-lg">
                           <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                             <img
                               src={asset.url || "/placeholder.svg"}
@@ -304,7 +406,7 @@ export default function UploadContent({
         {traitCategories.length > 0 && (
           <div className="grid gap-4">
             {traitCategories.map((category) => (
-              <Card key={category.name} className="bg-black-100 text-white border-0">
+              <Card key={category.name} className="bg-black-100 text-white border border-white-16 p-4 rounded-lg">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -324,9 +426,9 @@ export default function UploadContent({
                 </CardHeader>
                 <CardContent>
                   {category.assets.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ">
                       {category.assets.map((asset) => (
-                        <div key={asset.id} className="relative group">
+                        <div key={asset.id} className="relative group border border-white-16 p-4 rounded-lg">
                           <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                             <img
                               src={asset.url || "/placeholder.svg"}

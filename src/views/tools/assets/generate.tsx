@@ -87,7 +87,7 @@ export default function Generate(props: GenerateProps) {
                   </Button>
                   <Button
                     onClick={props.generateCollection}
-                    disabled={props.isGenerating || props.traitCategories.length === 0}
+                    disabled={props.isDownloading || props.isGenerating || props.traitCategories.length === 0}
                     size="lg"
                   >
                     {props.isGenerating ? "Generating..." : "Generate Collection"}

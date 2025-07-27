@@ -303,95 +303,78 @@ export default function NFTGenerator() {
 
     const nfts: GeneratedNFT[] = []
     const usedCombinations = new Set<string>()
-    const BATCH_SIZE = 50 // Process 25 NFTs at a time for better performance
 
-    for (let batchStart = 0; batchStart < collectionSize; batchStart += BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + BATCH_SIZE, collectionSize)
-      const batchSize = batchEnd - batchStart
+    for (let i = 0; i < collectionSize; i++) {
+      let traits: { [category: string]: Asset }
+      let combinationKey: string
+      let attempts = 0
 
-      // Generate batch in parallel
-      const batchPromises = Array.from({ length: batchSize }, async (_, index) => {
-        const nftIndex = batchStart + index
-        let traits: { [category: string]: Asset }
-        let combinationKey: string
-        let attempts = 0
+      // Try to generate unique combination
+      do {
+        traits = generateNFTTraits()
+        combinationKey = Object.values(traits)
+          .map((t) => t.id)
+          .sort()
+          .join("-")
+        attempts++
+      } while (usedCombinations.has(combinationKey) && attempts < 100)
 
-        // Try to generate unique combination
-        do {
-          traits = generateNFTTraits()
-          combinationKey = Object.values(traits)
-            .map((t) => t.id)
-            .sort()
-            .join("-")
-          attempts++
-        } while (usedCombinations.has(combinationKey) && attempts < 100)
+      if (attempts < 100) {
+        usedCombinations.add(combinationKey)
+      }
 
-        if (attempts < 100) {
-          usedCombinations.add(combinationKey)
-        }
-
-        const canvas = await generateNFTImage(traits)
-
-        return {
-          id: nftIndex + 1,
-          traits,
-          canvas,
-        }
+      // Store only metadata, no canvas generation
+      nfts.push({
+        id: i + 1,
+        traits,
+        // No canvas property - generate on demand
       })
 
-      // Wait for current batch to complete
-      const batchResults = await Promise.all(batchPromises)
-      nfts.push(...batchResults)
-
       // Update progress
-      const progress = (batchEnd / collectionSize) * 100
+      const progress = ((i + 1) / collectionSize) * 100
       setGenerationProgress(progress)
 
-      // Small delay to prevent UI freezing and allow progress update
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Yield control every 100 NFTs
+      if (i % 100 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1))
+      }
     }
 
     setGeneratedNFTs(nfts)
     setIsGenerating(false)
 
-    // Set first NFT as preview
-    if (nfts.length > 0) {
-      setPreviewNFT(nfts[0])
-    }
   }, [traitCategories, collectionSize, generateNFTTraits, generateNFTImage])
 
   const downloadCollection = useCallback(async () => {
-    if (generatedNFTs.length === 0) return
+    if (generatedNFTs.length === 0) return;
 
-    setIsDownloading(true)
-    setDownloadProgress(0)
+    setIsDownloading(true);
+    setDownloadProgress(0);
 
     try {
-      const zip = new JSZip()
-      const imagesFolder = zip.folder("images")
-      const metadataFolder = zip.folder("metadata")
+      const zip = new JSZip();
+      const imagesFolder = zip.folder("images");
+      const metadataFolder = zip.folder("metadata");
 
-      const totalNFTs = generatedNFTs.length // Use actual generated NFTs count
-      const BATCH_SIZE = 50 // Process 50 NFTs at a time
-      let processedCount = 0
+      const totalNFTs = generatedNFTs.length;
+      const BATCH_SIZE = collectionSize / 10; // Much smaller batch size
+      let processedCount = 0;
 
-      // Process NFTs in batches for better performance
-      for (let batchStart = 0; batchStart < totalNFTs; batchStart += BATCH_SIZE) {
-        const batchEnd = Math.min(batchStart + BATCH_SIZE, totalNFTs)
-        const batch = generatedNFTs.slice(batchStart, batchEnd)
-
-        // Process batch in parallel
+      // Process in smaller batches sequentially
+      for (let i = 0; i < totalNFTs; i += BATCH_SIZE) {
+        const batch = generatedNFTs.slice(i, i + BATCH_SIZE);
+        
+        // Process current batch in parallel
         const batchPromises = batch.map(async (nft) => {
-          if (nft.canvas) {
-            // Convert canvas to blob in parallel
+          try {
+            const canvas = await generateNFTImage(nft.traits);
+
             const imageBlob = await new Promise<Blob>((resolve) => {
-              nft.canvas!.toBlob((blob) => resolve(blob!), "image/png", 0.8) // Add compression
-            })
+              canvas.toBlob((blob) => resolve(blob!), "image/png", 0.6); // Lower quality for speed
+            });
 
-            // Add files to zip
-            imagesFolder?.file(`${nft.id}.png`, imageBlob)
+            imagesFolder?.file(`${nft.id}.png`, imageBlob);
 
-            // Generate metadata
             const metadata = {
               name: `NFT #${nft.id}`,
               description: `Generated NFT with unique traits`,
@@ -400,54 +383,58 @@ export default function NFTGenerator() {
                 trait_type,
                 value: asset.name,
               })),
-            }
-            metadataFolder?.file(`${nft.id}.json`, JSON.stringify(metadata, null, 2))
-          }
-        })
+            };
+            metadataFolder?.file(`${nft.id}.json`, JSON.stringify(metadata, null, 2));
 
-        // Wait for current batch to complete
-        await Promise.all(batchPromises)
-        processedCount += batch.length
+            // Aggressive cleanup
+            canvas.width = 0;
+            canvas.height = 0;
+            
+          } catch (error) {
+            console.error(`Error processing NFT ${nft.id}:`, error);
+          }
+        });
+
+        await Promise.all(batchPromises);
+        processedCount += batch.length;
 
         // Update progress
-        const progress = (processedCount / totalNFTs) * 90 // 90% for processing files
-        setDownloadProgress(progress)
+        const progress = (processedCount / totalNFTs) * 90;
+        setDownloadProgress(progress);
 
-        // Small delay to prevent UI freezing
-        await new Promise(resolve => setTimeout(resolve, 10))
+        // Force garbage collection opportunity
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Final step: generating ZIP (10% of progress)
-      setDownloadProgress(95)
-      const zipBlob = await zip.generateAsync({ 
+      setDownloadProgress(95);
+      const zipBlob = await zip.generateAsync({
         type: "blob",
         compression: "DEFLATE",
-        compressionOptions: { level: 3 }, // Faster compression (was 6)
-        streamFiles: true, // Enable streaming for better performance
-      })
-      
-      setDownloadProgress(100)
-      
-      // Download the file
-      const url = URL.createObjectURL(zipBlob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `nft-collection-${Date.now()}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
+        compressionOptions: { level: 1 }, // Fastest compression
+        streamFiles: true,
+      });
 
-      // Reset after a short delay
+      setDownloadProgress(100);
+
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nft-collection-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
       setTimeout(() => {
-        setIsDownloading(false)
-        setDownloadProgress(0)
-      }, 1000)
+        setIsDownloading(false);
+        setDownloadProgress(0);
+      }, 1000);
 
     } catch (error) {
-      console.error("Error downloading collection:", error)
-      setIsDownloading(false)
-      setDownloadProgress(0)
+      console.error("Error downloading collection:", error);
+      setIsDownloading(false);
+      setDownloadProgress(0);
     }
-  }, [generatedNFTs])
+  }, [generatedNFTs, generateNFTImage]);
+
 
   const generatePreview = useCallback(async () => {
     if (traitCategories.length === 0) return
@@ -455,24 +442,18 @@ export default function NFTGenerator() {
     const traits = generateNFTTraits()
     const canvas = await generateNFTImage(traits)
 
-    // Create unique ID to avoid conflicts with generated NFTs
     const uniqueId = `preview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    // Create new preview NFT
     const newPreviewNFT: GeneratedNFT = {
-      id: uniqueId, // Use unique ID instead of sequential number
+      id: uniqueId,
       traits,
       canvas,
     }
-
-    // Add to preview-generated NFTs collection
     setPreviewGeneratedNFTs(prev => [...prev, newPreviewNFT])
     
-    // Set as current preview NFT
     setPreviewNFT(newPreviewNFT)
   }, [traitCategories, generateNFTTraits, generateNFTImage])
 
-  // Transform GeneratedNFT to the format expected by Generate component
   const transformNFTToDisplayFormat = useCallback((nft: GeneratedNFT) => ({
     id: nft.id.toString(),
     name: `NFT #${nft.id}`,
@@ -493,12 +474,10 @@ export default function NFTGenerator() {
       return
     }
 
-    // Find the original NFT from generated collection
     const originalNFT = previewGeneratedNFTs.find(n => n.id.toString() === nft.id)
     if (originalNFT) {
       setPreviewNFT(originalNFT)
     } else if (nft.metadata.traits) {
-      // Transform if not found in collection (for preview generation)
       const canvas = document.createElement("canvas")
       canvas.width = 512
       canvas.height = 512
@@ -520,17 +499,38 @@ export default function NFTGenerator() {
   }, [generatedNFTs])
 
   const handleFolderUpload = useCallback((files: FileList) => {
+    console.log('Files received:', files.length);
+    
+    if (files.length === 0) {
+      alert('No files were found. Please try again.');
+      return;
+    }
+    
     const newCategories: { [categoryName: string]: TraitCategory } = {}
     
     Array.from(files).forEach((file) => {
       if (file.type.startsWith("image/")) {
-        const pathParts = file.webkitRelativePath.split("/")
+        const pathParts = file.webkitRelativePath.split("/").filter(part => part.length > 0)
+        console.log('Processing file:', file.name, 'Path:', pathParts, 'RelativePath:', file.webkitRelativePath);
         
-        if (pathParts.length >= 3) {
-          const traitName = pathParts[1].toLowerCase() // Normalize to lowercase
-          const rarityFolder = pathParts[2].toLowerCase()
-          const rarityPercentage = DEFAULT_RARITY_MAPPING[rarityFolder] || 25
+        let traitName = "";
+        let rarityPercentage = 50; // default rarity
+        
+        if (pathParts.length >= 2) {
+          // Get the first folder name as category (pathParts[0] is usually root folder)
+          traitName = pathParts[0]; // Use the first folder as trait name
+        } else if (pathParts.length === 1) {
+          // Single file in root - use filename prefix
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          traitName = fileName.split('_')[0] || fileName.split('-')[0] || 'misc';
+        } else {
+          // No path structure - use filename
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          traitName = fileName.split('_')[0] || fileName.split('-')[0] || 'misc';
+          console.log(`File without path structure, using filename: ${fileName} -> trait: ${traitName}`);
+        }
 
+        if (traitName) {
           const asset: Asset = {
             id: Math.random().toString(36).substr(2, 9),
             name: file.name.replace(/\.[^/.]+$/, ""),
@@ -539,7 +539,6 @@ export default function NFTGenerator() {
             rarity: rarityPercentage,
           }
 
-          // Initialize category if it doesn't exist
           if (!newCategories[traitName]) {
             newCategories[traitName] = {
               name: traitName,
@@ -548,9 +547,15 @@ export default function NFTGenerator() {
           }
 
           newCategories[traitName].assets.push(asset)
+          console.log(`Added ${file.name} to category ${traitName} with rarity ${rarityPercentage}%`);
         }
+      } else if (file.size > 0) {
+        console.log('Skipping non-image file:', file.name, 'Type:', file.type);
       }
     })
+
+    console.log('Categories created:', Object.keys(newCategories));
+    console.log('Total assets per category:', Object.entries(newCategories).map(([name, cat]) => `${name}: ${cat.assets.length}`));
 
     // Add new categories to state, avoiding duplicates
     Object.values(newCategories).forEach((category) => {
