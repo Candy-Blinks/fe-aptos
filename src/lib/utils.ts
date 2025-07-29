@@ -88,3 +88,10 @@ export function formatUnixTimestamp(unixTimestamp: number) {
   const date = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
   return format(date, "MMMM dd, yyyy HH:mm:ss"); // Example: December 20, 2024 10:15:24
 }
+
+// Helper function to properly join URL paths
+export function joinUrl(base: string, path: string) {
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
+}
