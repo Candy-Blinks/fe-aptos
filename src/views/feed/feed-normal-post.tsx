@@ -108,7 +108,7 @@ export default function FeedNormalPost({ userData, postData }: { userData: any; 
       <div className="flex gap-2">
         <figure className="size-[40px] rounded-full">
           <Image
-            src={profileImageUrl}
+            src={postData.user?.profile_url || profileImageUrl}
             alt="profile icon"
             width={40}
             height={40}
