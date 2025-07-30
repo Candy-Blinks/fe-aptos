@@ -28,7 +28,9 @@ export default function Page() {
   // const [isReferralValid, setIsReferralValid] = useState<boolean>(false); // Track if referral code is validated
   // const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {} = useStore();
+  // const {} = useStore();
+  const zzstore = useStore();
+  console.log("zzstore", zzstore?.onboardingPayload);
 
 
 

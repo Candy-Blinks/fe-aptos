@@ -5,10 +5,26 @@ import GetStarted from "@/views/get-started";
 //import useLaunchpadProgram from "@/hooks/programs/useLaunchpadProgram";
 import CandyStoreCard from "@/views/new-collections/candy-store-card";
 import { cn } from "@/lib/utils";
+import useFetchAllCollections from "@/hooks/api/collection/useFetchAllCollections";
+import { useEffect } from "react";
 
 export default function Explore() {
   //const { fetchAllCandyStores } = useLaunchpadProgram();
+  
+  // Use the new hook to fetch all collections
+  const { data: collections, isLoading, error } = useFetchAllCollections();
 
+  // Console log the data
+  useEffect(() => {
+    if (collections) {
+      console.log("Collections data:", collections);
+    }
+    if (error) {
+      console.error("Error fetching collections:", error);
+    }
+  }, [collections, error]);
+
+  // Mock data for now (you can replace this with real collections later)
   const fetchAllCandyStores = {
     data: [
       {
@@ -65,16 +81,32 @@ export default function Explore() {
             <p className={cn("ty-h2 text-white-100")}>Explore Candy Stores</p>
           </div>
 
+          {isLoading && (
+            <div className="w-full flex items-center justify-center">
+              <p className="text-white-100">Loading collections...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="w-full flex items-center justify-center">
+              <p className="text-red-500">Error loading collections: {error.message}</p>
+            </div>
+          )}
+
           <div className="w-full flex flex-wrap gap-4">
             {fetchAllCandyStores.data?.map((candyStore: any) => {
               return (
                 <div key={candyStore.address} className="basis-[24%]">
                   <CandyStoreCard
                     jsonUrl={candyStore.url}
+                    // jsonUrl={candyStore.collection_uri}
                     publicKey={candyStore.address}
                     numberOfItems={candyStore.numberOfItems}
+                    // numberOfItems={candyStore.max_supply}
                     name={candyStore.name}
+                    // name={candyStore.collection_name}
                     minted={candyStore.minted}
+                    // minted={candyStore.number_of_mints}
                   />
                 </div>
               );

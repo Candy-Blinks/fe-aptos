@@ -8,51 +8,264 @@ import CreatorCard from "@/views/feed/creator-card";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { ASSETS_URL } from "@/lib/constants";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FeedForyou from "@/views/feed/feed-foryou";
 import FeedFollowing from "@/views/feed/feed-following";
 import FeedTrending from "@/views/feed/feed-trending";
+import useCreatePost from "@/hooks/api/post/useCreatePost";
+import { toast } from "sonner";
+import useFetchAllUsers from "@/hooks/api/users/useFetchAllUsers";
+import useCheckFollowStatus from "@/hooks/api/users/useCheckFollowStatus";
+import useFollowUser from "@/hooks/api/users/useFollowUser";
+import useFetchAllPosts from "@/hooks/api/post/useFetchAllPosts";
+import useFetchAllFollowingPosts from "@/hooks/api/post/useFetchAllFollowingPosts";
+import useFetchAllCollections from "@/hooks/api/collection/useFetchAllCollections";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useWalletUser } from "@/hooks/useWalletUser";
+
+// Wrapper component to handle follow status for each user
+interface CreatorCardWithFollowStatusProps {
+  user: {
+    id: string;
+    username: string;
+    aptos_address: string;
+    display_name: string;
+    profile_url?: string;
+  };
+  currentUserAptosAddress?: string;
+  onFollowClick: () => void;
+  isFollowLoading: boolean;
+}
+
+function CreatorCardWithFollowStatus({
+  user,
+  currentUserAptosAddress,
+  onFollowClick,
+  isFollowLoading,
+}: CreatorCardWithFollowStatusProps) {
+  // Check if current user is following this user
+  const { data: followStatus } = useCheckFollowStatus({
+    follower_aptos_address: currentUserAptosAddress || "",
+    following_aptos_address: user.aptos_address,
+  });
+
+  return (
+    <CreatorCard
+      imageUrl={user.profile_url || "/images/cmb/2.png"} // Use profile_url or fallback
+      creatorId={user.username}
+      name={user.display_name}
+      aptosAddress={user.aptos_address}
+      isFollowing={followStatus?.isFollowing || false}
+      onFollowClick={onFollowClick}
+      isFollowLoading={isFollowLoading}
+    />
+  );
+}
 
 export default function page() {
   //const { fetchAllCandyStores } = useLaunchpadProgram();
-  // Mocked fetchAllCandyStores structure to prevent runtime errors
-  const fetchAllCandyStores = { data: [] };
+  // Fetch all collections
+  const { data: allCollections = [], isLoading: isLoadingCollections } = useFetchAllCollections();
 
   const [feedIsActive, setFeedIsActive] = useState("foryou");
   const profileImageUrl = "/images/cmb/2.png";
+
+  // Post creation state
+  const [postContent, setPostContent] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Hooks
+  const { mutate: createPost, isPending: isCreatingPost } = useCreatePost();
+  const { aptosAddress, user, isAuthenticated } = useWalletUser();
+  const queryClient = useQueryClient();
+
+  // Fetch all users (limit to get more than 3 to filter from)
+  const { data: allUsers = [], isLoading: isLoadingUsers } = useFetchAllUsers({ take: 20 });
+
+  // Fetch posts based on feed type
+  const { data: globalPosts = [], isLoading: isLoadingGlobalPosts } = useFetchAllPosts({ take: 20 });
+  const { data: followingPosts = [], isLoading: isLoadingFollowingPosts } = useFetchAllFollowingPosts({
+    aptos_address: aptosAddress || "",
+    take: 20,
+  });
+
+  // Follow functionality
+  const { mutate: followUser, isPending: isFollowLoading } = useFollowUser();
+
+  // Filter users that are not followed by current user and exclude current user
+  const suggestedUsers = useMemo(() => {
+    if (!aptosAddress || !allUsers.length) return [];
+
+    return allUsers
+      .filter((suggestedUser) => suggestedUser.aptos_address !== aptosAddress) // Exclude current user
+      .slice(0, 3); // Take only 3 users for suggestions
+  }, [allUsers, aptosAddress]);
+
+  // Handle follow action
+  const handleFollowUser = (targetUserAptosAddress: string) => {
+    if (!aptosAddress) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    followUser(
+      {
+        follower_aptos_address: aptosAddress,
+        following_aptos_address: targetUserAptosAddress,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Successfully followed user!");
+          // Invalidate queries to refresh the data
+          queryClient.invalidateQueries({ queryKey: ["followStatus"] });
+          queryClient.invalidateQueries({ queryKey: ["userFollowing"] });
+          queryClient.invalidateQueries({ queryKey: ["userFollowers"] });
+        },
+        onError: (error) => {
+          toast.error(error.message || "Failed to follow user");
+        },
+      },
+    );
+  };
 
   function handleFeedChange(feed: string) {
     setFeedIsActive(feed);
   }
 
-  const user = {
-    id: "1",
-    name: "John Doe",
-    profileImageUrl: "/images/cmb/2.png",
-    followers: { total: 100, followersIds: ["1", "2", "3"] },
-    following: { total: 50, followersIds: ["1", "2", "3"] },
+  // Handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const fileArray = Array.from(files);
+
+    // Check file limit
+    if (fileArray.length > 4) {
+      toast.error("Maximum 4 images allowed");
+      return;
+    }
+
+    // Check file types (only images)
+    const validFiles = fileArray.filter((file) => file.type.startsWith("image/"));
+    if (validFiles.length !== fileArray.length) {
+      toast.error("Only image files are allowed");
+      return;
+    }
+
+    setSelectedFiles(validFiles);
+
+    // Create preview URLs
+    const urls = validFiles.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
   };
 
-  const posts = [
-    {
-      postId: "postId-1",
-      isColelctionShare: false,
-      collectionId: "",
-      text: "In the fast-paced world of corporate life, it's crucial to prioritize your mental peace. Take moments to breathe, reflect, and recharge. Seek solace in small rituals, like morning walks, deep breaths, or a quick meditation session during breaks. #mentalpeace #corporatelife",
-      created_at: "2023-10-01T12:00:00Z",
-      likes: 43,
-      comments: 69,
-    },
-    {
-      postId: "postId-2",
-      isColelctionShare: true,
-      collectionId: "cmb-01",
-      text: "In the fast-paced world colection of corporate life, it's crucial to prioritize your mental peace. Take moments to breathe, reflect, and recharge. Seek solace in small rituals, like morning walks, deep breaths, or a quick meditation session during breaks. #mentalpeace #corporatelife",
-      created_at: "2023-10-01T12:00:00Z",
-      likes: 69,
-      comments: 13,
-    },
-  ];
+  // Remove selected image
+  const removeImage = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newUrls = previewUrls.filter((_, i) => i !== index);
+
+    // Revoke the removed URL to prevent memory leaks
+    URL.revokeObjectURL(previewUrls[index]);
+
+    setSelectedFiles(newFiles);
+    setPreviewUrls(newUrls);
+  };
+
+  // Handle post creation
+  const handleCreatePost = () => {
+    if (!aptosAddress) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (!postContent.trim()) {
+      toast.error("Please enter some content for your post");
+      return;
+    }
+
+    if (postContent.length > 500) {
+      toast.error("Post content must be 500 characters or less");
+      return;
+    }
+
+    createPost(
+      {
+        aptos_address: aptosAddress,
+        content: postContent.trim(),
+        files: selectedFiles.length > 0 ? selectedFiles : undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Post created successfully!");
+          // Reset form
+          setPostContent("");
+          setSelectedFiles([]);
+          setPreviewUrls([]);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        },
+        onError: (error) => {
+          toast.error(error.message || "Failed to create post");
+        },
+      },
+    );
+  };
+
+  // Get grid class based on number of images
+  const getImageGridClass = (count: number) => {
+    switch (count) {
+      case 1:
+        return "grid-cols-1";
+      case 2:
+        return "grid-cols-2";
+      case 3:
+        return "grid-cols-2"; // 2x2 grid with one empty space
+      case 4:
+        return "grid-cols-2";
+      default:
+        return "grid-cols-1";
+    }
+  };
+
+  // Use real user data from wallet connection
+  const userProfile = user
+    ? {
+        id: user.id,
+        name: user.display_name || user.username,
+        username: user.username,
+        aptosAddress: user.aptos_address,
+        displayName: user.display_name,
+        profileImageUrl: user.profile_url || "/images/cmb/2.png",
+        followers: { total: 0, followersIds: [] }, // Will be populated when we add follower counts
+        following: { total: 0, followersIds: [] }, // Will be populated when we add following counts
+      }
+    : null;
+
+  // Debug: Log user data to see if profile_url is being fetched
+  console.log("User data:", user);
+  console.log("User profile URL:", user?.profile_url);
+
+  // Get posts based on active feed
+  const getPostsForFeed = () => {
+    switch (feedIsActive) {
+      case "foryou":
+        return globalPosts;
+      case "following":
+        return followingPosts;
+      case "trending":
+        return globalPosts; // For now, use global posts for trending
+      default:
+        return globalPosts;
+    }
+  };
+
+  const currentPosts = getPostsForFeed();
+  const isLoadingPosts =
+    feedIsActive === "foryou" || feedIsActive === "trending" ? isLoadingGlobalPosts : isLoadingFollowingPosts;
 
   return (
     <>
@@ -63,14 +276,14 @@ export default function page() {
             <p className="flex justify-center items-center text-center w-full">Featuered Collections</p>
 
             <div className="flex justify-center items-center flex-col gap-4">
-              {fetchAllCandyStores.data?.slice(0, 3).map((candyStore: any) => {
+              {allCollections.slice(0, 3).map((collection: any) => {
                 // TODO: make the algorithim for what defines 'featured collection' like sort it by mint count activity and choose the top 3
                 return (
                   <CollectionCard
-                    key={candyStore.address}
-                    jsonUrl={candyStore.url}
-                    publicKey={candyStore.address}
-                    name={candyStore.name}
+                    key={`${collection.collection_owner}-${collection.collection_name}`}
+                    jsonUrl={collection.collection_uri}
+                    publicKey={`${collection.collection_owner}/${collection.collection_name}`}
+                    name={collection.collection_name}
                   />
                 );
               })}
@@ -131,74 +344,153 @@ export default function page() {
             </section>
 
             <section className="flex flex-col bg-white-4 gap-4 p-5 rounded-xl">
-              <div className="flex w-full gap-3 items-center justify-center">
-                <figure className="size-[40px]">
+              <div className="flex w-full gap-3 items-start">
+                <figure className="size-[40px] flex-shrink-0 mt-1">
                   <Image
-                    src={profileImageUrl}
+                    src={user?.profile_url || profileImageUrl}
                     alt="profile icon"
                     width={40}
                     height={40}
                     priority
                     className="object-cover size-[40px] rounded-[8px]"
+                    key={user?.profile_url || "default"}
                   />
                 </figure>
-                <div className="rounded-[8px] bg-white-4 h-[49px] flex items-center justify-start w-full">
-                  <p className="p-4 text-[16px] font-normal text-white-50">Share your mind?</p>
+                <div className="flex flex-col w-full gap-2">
+                  <textarea
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                    placeholder="Share your mind?"
+                    className="w-full min-h-[49px] max-h-[120px] p-4 text-[16px] font-normal text-white-100 bg-white-8 rounded-[8px] resize-none outline-none placeholder:text-white-50 focus:ring-2 focus:ring-pink-50 focus:ring-opacity-50"
+                    maxLength={500}
+                  />
+                  <div className="flex justify-between items-center text-sm">
+                    <span
+                      className={cn(
+                        "text-white-50",
+                        postContent.length > 450 && "text-yellow-500",
+                        postContent.length >= 500 && "text-red-500",
+                      )}
+                    >
+                      {postContent.length}/500
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Image Preview Grid */}
+              {previewUrls.length > 0 && (
+                <div className={cn("grid gap-2 mt-2", getImageGridClass(previewUrls.length))}>
+                  {previewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <Image
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        width={200}
+                        height={200}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                      <button
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
-                <div className="flex gap-4 justify-between items-center">
-                  <figure className="cursor-pointer size-[24px]">
+                <div className="flex gap-4 items-center">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    disabled={isCreatingPost}
+                  />
+
+                  <figure
+                    className="cursor-pointer size-[24px] hover:opacity-70 transition-opacity"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Image
                       src={`${ASSETS_URL}icons/feed-image.svg`}
                       alt="upload image icon"
                       width={24}
                       height={24}
                       priority
-                      className="object-contain  size-[24px]"
+                      className="object-contain size-[24px]"
                     />
                   </figure>
-                  <figure className="cursor-pointer size-[24px]">
+                  <figure className="cursor-pointer size-[24px] opacity-50">
                     <Image
                       src={`${ASSETS_URL}icons/feed-video.svg`}
                       alt="upload video icon"
                       width={24}
                       height={24}
                       priority
-                      className="object-contain  size-[24px]"
+                      className="object-contain size-[24px]"
                     />
                   </figure>
-                  <figure className="cursor-pointer size-[24px]">
+                  <figure className="cursor-pointer size-[24px] opacity-50">
                     <Image
                       src={`${ASSETS_URL}icons/feed-schedule.svg`}
                       alt="schedule upload icon"
                       width={24}
                       height={24}
                       priority
-                      className="object-contain  size-[24px]"
+                      className="object-contain size-[24px]"
                     />
                   </figure>
                 </div>
-                <Button className="cursor-pointer bg-pink-50 hover:bg-pink-72">Create a post</Button>
+                <Button
+                  onClick={handleCreatePost}
+                  disabled={isCreatingPost || !postContent.trim() || postContent.length > 500}
+                  className="cursor-pointer bg-pink-50 hover:bg-pink-72 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingPost ? "Posting..." : "Create a post"}
+                </Button>
               </div>
             </section>
 
-            {/* // ? these are working, but still have to se. a function for filteration into a proper algo */}
-            {feedIsActive === "foryou" && <FeedForyou posts={posts} user={user} />}
-            {feedIsActive === "trending" && <FeedTrending posts={posts} user={user} />}
-            {feedIsActive === "following" && <FeedFollowing posts={posts} user={user} />}
+            {/* Feed content with loading states */}
+            {isLoadingPosts ? (
+              <div className="flex justify-center items-center py-8">
+                <p className="text-white-50">Loading posts...</p>
+              </div>
+            ) : (
+              <>
+                {feedIsActive === "foryou" && <FeedForyou posts={currentPosts} user={userProfile} />}
+                {feedIsActive === "trending" && <FeedTrending posts={currentPosts} user={userProfile} />}
+                {feedIsActive === "following" && <FeedFollowing posts={currentPosts} user={userProfile} />}
+              </>
+            )}
           </main>
 
           <aside className="flex border h-fit border-white-4 rounded-2xl flex-col justify-start items-center gap-4 p-4 w-[293px]">
-            <p className="flex justify-center items-center text-center w-full">Featuered Creators</p>
+            <p className="flex justify-center items-center text-center w-full">Featured Creators</p>
 
             <div className="flex justify-center items-center flex-col gap-4">
-              <CreatorCard
-                // key={candyStore.address}
-                imageUrl={"/images/cmb/2.png"}
-                creatorId={"creator1"}
-                name={"Creator 1"}
-              />
+              {isLoadingUsers ? (
+                <div className="text-white-50">Loading suggestions...</div>
+              ) : suggestedUsers.length > 0 ? (
+                suggestedUsers.map((suggestedUser) => (
+                  <CreatorCardWithFollowStatus
+                    key={suggestedUser.id}
+                    user={suggestedUser}
+                    currentUserAptosAddress={aptosAddress}
+                    onFollowClick={() => handleFollowUser(suggestedUser.aptos_address)}
+                    isFollowLoading={isFollowLoading}
+                  />
+                ))
+              ) : (
+                <div className="text-white-50 text-center">No suggestions available</div>
+              )}
             </div>
           </aside>
         </div>
