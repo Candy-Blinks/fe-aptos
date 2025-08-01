@@ -24,7 +24,7 @@ export default function CandyStoreCard({
 }: ICandyStoreCardProps) {
   const { data } = useQuery({
     queryFn: async () => {
-      const { data } = await axios.get(`${jsonUrl}/collection.json`);
+      const { data } = await axios.get(jsonUrl);
       return data;
     },
     queryKey: ["url", jsonUrl],
@@ -32,7 +32,7 @@ export default function CandyStoreCard({
   });
 
   if (data?.image == "") {
-    return <></>;
+    return null;
   }
 
   const rawMintPercentage = (Number(minted) / Number(numberOfItems)) * 100
@@ -40,21 +40,19 @@ export default function CandyStoreCard({
 
   return (
     <Link
-      href={`/store/${publicKey}`}
+      href={`/store/${publicKey}/${name}`}
       key={publicKey}
       className="w-full bg-white-4 rounded-lg shadow-lg cursor-pointer hover:shadow-pink-600/50 hover:border-pink-600 transition duration-200 ease-in-out"
     >
       <div className="w-full flex flex-col gap-4 bg-white-4 p-4 rounded-2xl">
         <div className="w-full h-[250px] rounded-3xl bg-white-8 p-4 flex items-center justify-center">
           <div className="h-[230px] w-[230px] bg-red-200 rounded-2xl relative">
-            {data?.image && (
-              <Image
-                src={data?.image}
-                alt={data?.image}
-                fill
-                className="object-cover rounded-2xl"
-              />
-            )}
+            <Image
+              src={data?.image}
+              alt={name}
+              fill
+              className="object-cover rounded-2xl"
+            />
           </div>
         </div>
         <div className="w-full flex gap-4 just">

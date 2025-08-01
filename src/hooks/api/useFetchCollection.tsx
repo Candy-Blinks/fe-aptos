@@ -16,7 +16,7 @@ export default function useFetchCollection({ collectionOwner, collectionName }: 
     queryKey: ["collection", collectionOwner, collectionName],
     queryFn: async () => {
       const { data } = await axios.get(
-        `${API_URL}collections/collection?owner=${collectionOwner}&name=${collectionName}`,
+        `${API_URL}api/collections/collection?owner=${collectionOwner}&name=${collectionName}`,
       );
 
       if (!data) {

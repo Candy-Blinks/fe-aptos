@@ -110,14 +110,73 @@ export default function Store({ params }: StoreProps) {
   //   console.log(candyStore);
   // }, [candyStore]);
 
-  // useEffect(() => {
-  //   const tempPhases = candyStore?.phases ?? [];
+  useEffect(() => {
+    // Mock phases data
+    const tempPhases = [
+      {
+        label: "Team",
+        startDate: {
+          timestamp: Math.floor((Date.now() + 5 * 7 * 24 * 60 * 60 * 1000) / 1000),
+        },
+        endDate: {
+          timestamp: Math.floor((Date.now() + 7 * 7 * 24 * 60 * 60 * 1000) / 1000), // Convert to seconds
+        },
+        aptosPayment: {
+          amount: 0, // Free for team
+        },
+        mintLimit: {
+          limit: 5, // Max 5 per wallet
+        },
+        allocation: {
+          limit: 100, // 100 NFTs allocated for team
+        },
+      },
+      {
+        label: "Whitelist",
+        startDate: {
+          timestamp: Math.floor((Date.now() + 1 * 7 * 24 * 60 * 60 * 1000) / 1000),
+        },
+        endDate: {
+          timestamp: Math.floor((Date.now() + 2 * 7 * 24 * 60 * 60 * 1000) / 1000), // Convert to seconds
+        },
+        aptosPayment: {
+          amount: 1.5 * OCTAS_PER_APT, // 1.5 APT
+        },
+        mintLimit: {
+          limit: 3, // Max 3 per wallet
+        },
+        allocation: {
+          limit: 500, // 500 NFTs allocated for whitelist
+        },
+      },
+      {
+        label: "Public",
+        startDate: {
+          timestamp: Math.floor((Date.now() + 4 * 7 * 24 * 60 * 60 * 1000) / 1000),
+        },
+        endDate: {
+          timestamp: Math.floor((Date.now() + 8 * 7 * 24 * 60 * 60 * 1000) / 1000), // Convert to seconds
+        },
+        aptosPayment: {
+          amount: 2.5 * OCTAS_PER_APT, // 2.5 APT
+        },
+        mintLimit: {
+          limit: 10, // Max 10 per wallet
+        },
+        allocation: {
+          limit: 940, // Remaining NFTs for public
+        },
+      },
+    ];
 
-  //   if (tempPhases.length > 0) {
-  //     setMintPhases(tempPhases);
-  //     setMintCurrentPhase(tempPhases?.[0]?.label);
-  //   }
-  // }, [setMintPhases, candyStore?.phases, setMintCurrentPhase]);
+    // Use mock data instead of candyStore?.phases
+    // const tempPhases = candyStore?.phases ?? [];
+
+    if (tempPhases.length > 0) {
+      setMintPhases(tempPhases);
+      setMintCurrentPhase(tempPhases?.[0]?.label);
+    }
+  }, [setMintPhases, setMintCurrentPhase]);
 
   // interface IMintArgs {
   //   signers: {
@@ -249,7 +308,7 @@ export default function Store({ params }: StoreProps) {
                         // collectionMetadata?.image
                         //   ? collectionMetadata?.image
                         //   :
-                        `${ASSETS_URL}candyblinks.png`
+                        `${ASSETS_URL}/candyblinks.png`
                       }
                       alt="Collection Image"
                       fill
@@ -258,18 +317,18 @@ export default function Store({ params }: StoreProps) {
                   </div>
                 </div>
 
-                {/* <div className="flex items-center gap-[10px] justify-between w-full">
+                <div className="flex items-center gap-[10px] justify-between w-full">
                   {Array.from({ length: 3 }, (_, i) => i + 1).map((value) => {
                     return (
                       <NftImage
                         className="size-[160px] hover:scale-105 transition duration-200 ease-in-out"
-                        jsonUrl={candyStore?.url}
+                        jsonUrl={data?.collection_url}
                         key={value}
                         number={value - 1}
                       />
                     );
                   })}
-                </div> */}
+                </div> 
               </div>
               <div className="basis-[50%] max-w-[500px] flex flex-col gap-4">
                 <p className={cn("ty-h3 text-white-100")}>Candy Mob Business</p>
@@ -330,7 +389,7 @@ export default function Store({ params }: StoreProps) {
                             </div>
 
                             <p className={cn("ty-subtext text-white-100 text-[18px]")}>
-                              {phase.solPayment ? `APT ${phase.solPayment.amount / OCTAS_PER_APT}` : "FREE"}
+                                {phase.aptosPayment && phase.aptosPayment.amount > 0 ? `${phase.aptosPayment.amount / OCTAS_PER_APT} APT` : "FREE"}
                             </p>
                           </div>
                           <div className="w-full">
@@ -340,14 +399,14 @@ export default function Store({ params }: StoreProps) {
                             />
                           </div>
                           <div className="flex items-center justify-between">
-                            {/* <p
+                            <p
                               className={cn(
                                 "text-[14px] font-medium text-white-100"
                               )}
                             >
                               {phase.allocation
                                 ? `${
-                                    (candyStore?.minted ??
+                                    (data?.number_of_mints ??
                                       0 / phase.allocation.limit ??
                                       0) * 10
                                   }% Minted`
@@ -359,9 +418,9 @@ export default function Store({ params }: StoreProps) {
                               )}
                             >
                               {phase.allocation
-                                ? `${candyStore?.minted}/${candyStore?.numberOfItems}`
+                                ? `${data?.number_of_mints}/${phase.allocation.limit}`
                                 : ""}
-                            </p> */}
+                            </p>
                           </div>
                           <div className="flex items-center justify-between">
                             <p className={cn("text-[14px] font-medium text-white-50")}>
@@ -387,21 +446,17 @@ export default function Store({ params }: StoreProps) {
                 {mintTab === 1 && (
                   <div className="w-full flex flex-col gap-2">
                     <div className="w-full text-[18px] p-4 flex flex-col gap-4 rounded-lg bg-white-4 border border-white-4 transition ease-in-out duration-200">
-                      {/* <a
-                        href={
-                          data?.website.startsWith("https")
-                            ? data?.website
-                            : `https://${data?.website}`
-                        }
+                      <a
+                        href="https://candy-mob.com"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[#F4FAFD80] flex items-center justify-start gap-2"
                       >
                         <WorldIcon />
                         <p className="text-white-100 underline">
-                          {data?.website}
+                          https://candy-mob.com
                         </p>
-                      </a> */}
+                      </a>
                       <Separator className="bg-[#FAFCFF0A]" />
                       <div>
                         <p className="text-[#FAFCFF80]">Supply</p>
@@ -545,7 +600,8 @@ function NftImage({ jsonUrl, number, className }: INftImageProps) {
   return (
     <div className={cn(`${className ? className : "size-[150px]"} bg-white-4 rounded-3xl relative`)}>
       <Image
-        src={data?.image ?? `${ASSETS_URL}candyblinks.png`}
+        // src={data?.image ?? `${ASSETS_URL}candyblinks.png`}
+        src={`${ASSETS_URL}candyblinks.png`}
         alt="NFT Placeholder"
         fill
         className="object-cover rounded-2xl"

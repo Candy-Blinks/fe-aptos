@@ -14,7 +14,7 @@ export default function useFetchOwnedCandyStores({ accountAddress }: IUseFetchOw
   const query = useQuery({
     queryKey: ["collections", accountAddress],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}collections/owned-collections?owner=${accountAddress}`);
+      const { data } = await axios.get(`${API_URL}api/collections/owned-collections?owner=${accountAddress}`);
 
       if (!data || data.length === 0) {
         throw new Error("No collections found.");
