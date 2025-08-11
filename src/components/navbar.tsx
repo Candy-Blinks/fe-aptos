@@ -54,13 +54,15 @@ export default function Navbar() {
           </Link>
         </div>
         <div className="hidden md:flex items-center justify-center text-sm text-white-50 gap-4">
-          <span
+          <Link
+            href={"https://www.candyblinks.fun/"}
+            rel="noopener noreferrer"
             className={cn(
               `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
             )}
           >
             Home
-          </span>
+          </Link>
           <span
             className={cn(
               `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
