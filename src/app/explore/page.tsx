@@ -94,7 +94,7 @@ export default function Explore() {
           )}
 
           <div className="w-full flex flex-wrap gap-4">
-            {fetchAllCandyStores.data?.map((candyStore: any) => {
+            {fetchAllCandyStores?.map((candyStore: any) => {
               return (
                 <div key={candyStore.address} className="basis-[24%]">
                   <CandyStoreCard
@@ -107,6 +107,7 @@ export default function Explore() {
                     // name={candyStore.collection_name}
                     minted={candyStore.minted}
                     // minted={candyStore.number_of_mints}
+
                   />
                 </div>
               );
