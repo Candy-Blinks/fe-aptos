@@ -1,29 +1,38 @@
 import { API_URL } from "@/lib/constants";
-import { useStore } from "@/store/store";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { PostWithRelations } from "./types";
 
-interface IUseFetchCollection {
-  collectionOwner: string;
-  collectionName: string;
+interface GetFollowingFeedParams {
+  aptos_address: string;
+  take?: number;
+  skip?: number;
 }
 
-export default function useFetchCollection({ collectionOwner, collectionName }: IUseFetchCollection) {
+// Helper function to properly join URL paths
+const joinUrl = (base: string, path: string) => {
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
+};
+
+export default function useFetchAllFollowingPosts({ aptos_address, take = 20, skip = 0 }: GetFollowingFeedParams) {
   const query = useQuery({
-    queryKey: ["collection", collectionOwner, collectionName],
-    queryFn: async () => {
-      if (!collectionOwner) {
-        throw new Error("No Collection Owner provided");
-      }
-      
-      if (!collectionName) {
-        throw new Error("No Collection Name provided");
+    queryKey: ["followingFeed", aptos_address, take, skip],
+    queryFn: async (): Promise<PostWithRelations[]> => {
+      if (!aptos_address) {
+        throw new Error("No Aptos address provided");
       }
 
       try {
         const { data } = await axios.get(
-          `${API_URL}/api/collections/collection?owner=${collectionOwner}&name=${collectionName}`,
+          joinUrl(API_URL, '/api/posts/feed/following'),
           {
+            params: {
+              aptos_address,
+              take,
+              skip,
+            },
             headers: {
               'cb-api-key': process.env.NEXT_PUBLIC_API_KEY || 'your-dev-api-key',
               'Content-Type': 'application/json',
@@ -36,8 +45,9 @@ export default function useFetchCollection({ collectionOwner, collectionName }: 
           throw new Error("No response data received");
         }
 
-        if (!data?.collection_name) {
-          throw new Error("Invalid collection data: missing collection_name");
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid posts data: expected array");
         }
 
         return data;
@@ -50,16 +60,19 @@ export default function useFetchCollection({ collectionOwner, collectionName }: 
             throw new Error("Forbidden: Access denied");
           }
           if (error.response?.status === 404) {
-            throw new Error("Collection not found");
+            throw new Error("User not found or no posts available");
           }
           if (error.response?.status === 429) {
             throw new Error("Too many requests: Please try again later");
+          }
+          if (error.response?.status && error.response.status >= 500) {
+            throw new Error("Server error: Please try again later");
           }
         }
         throw error;
       }
     },
-    enabled: !!collectionOwner && !!collectionName,
+    enabled: !!aptos_address,
     retry: (failureCount, error) => {
       // Don't retry on auth errors or not found
       if (error.message.includes('Unauthorized') || 

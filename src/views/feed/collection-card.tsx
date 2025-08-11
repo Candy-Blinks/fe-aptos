@@ -14,7 +14,8 @@ interface CardProps {
 const CollectionCard: FC<CardProps> = ({ jsonUrl, publicKey, name }) => {
   const { data } = useQuery({
     queryFn: async () => {
-      const { data } = await axios.get(`${jsonUrl}/collection.json`);
+      // const { data } = await axios.get(`${jsonUrl}/collection.json`);
+      const { data } = await axios.get(`${jsonUrl}`);
       console.log(data);
       return data;
     },

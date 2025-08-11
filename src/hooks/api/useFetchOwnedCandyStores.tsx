@@ -1,7 +1,6 @@
 import { API_URL } from "@/lib/constants";
 import { useStore } from "@/store/store";
 import { useQuery } from "@tanstack/react-query";
-
 import axios from "axios";
 
 interface IUseFetchOwnedCandyStores {
@@ -14,26 +13,52 @@ export default function useFetchOwnedCandyStores({ accountAddress }: IUseFetchOw
   const query = useQuery({
     queryKey: ["collections", accountAddress],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}api/collections/owned-collections?owner=${accountAddress}`);
-
-      if (!data || data.length === 0) {
-        throw new Error("No collections found.");
-      }
-
       if (!accountAddress) {
-        throw Error("No Candy Store Address");
+        throw new Error("No account address provided");
       }
 
-      // if (!response?.collection) {
-      //   throw Error("No Collection address");
-      // }
+      try {
+        const { data } = await axios.get(
+          `${API_URL}/api/collections/owned-collections?owner=${accountAddress}`,
+          {
+            headers: {
+              'cb-api-key': process.env.NEXT_PUBLIC_API_KEY || 'your-dev-api-key',
+              'Content-Type': 'application/json',
+            },
+            timeout: 10000, // 10 second timeout
+          }
+        );
 
-      setHubCandyStore(accountAddress);
-      // setHubCollection(response?.collection);
+        if (!data || data.length === 0) {
+          throw new Error("No collections found.");
+        }
 
-      return data;
+        setHubCandyStore(accountAddress);
+        
+        return data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            throw new Error("Unauthorized: Invalid API key");
+          }
+          if (error.response?.status === 403) {
+            throw new Error("Forbidden: Access denied");
+          }
+          if (error.response?.status === 429) {
+            throw new Error("Too many requests: Please try again later");
+          }
+        }
+        throw error;
+      }
     },
     enabled: !!accountAddress,
+    retry: (failureCount, error) => {
+      // Don't retry on auth errors
+      if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   return {

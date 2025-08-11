@@ -8,9 +8,21 @@ interface CardProps {
   imageUrl: string;
   creatorId: string;
   name: string;
+  aptosAddress?: string;
+  isFollowing?: boolean;
+  onFollowClick?: () => void;
+  isFollowLoading?: boolean;
 }
 
-const CreatorCard: FC<CardProps> = ({ imageUrl, creatorId, name }) => {
+const CreatorCard: FC<CardProps> = ({ 
+  imageUrl, 
+  creatorId, 
+  name, 
+  aptosAddress,
+  isFollowing = false,
+  onFollowClick,
+  isFollowLoading = false
+}) => {
   return (
     <Card className="flex flex-col gap-4 w-[261px] p-4 h-[178px] overflow-hidden border-0 justify-between items-center bg-white-4">
       {/* <div className="w-[94px] h-[97px] gap-4 flex flex-col justify-between"> */}
@@ -71,11 +83,20 @@ const CreatorCard: FC<CardProps> = ({ imageUrl, creatorId, name }) => {
           </div>
         </div>
         <div className="flex items-start">
-          <Button className="bg-trasparent text-start leading-[20px] h-[19px] bg-none p-0 text-pink-50 text-[18px] font-semibold">
-            {/* // TODO: function to make the visitor of the page follow thew creator  */}
-            {/* // TODO: function to flip the text content to following if the visitor is already a follower  */}
-            Follow
-          </Button>
+          {!isFollowing && onFollowClick && (
+            <Button 
+              onClick={onFollowClick}
+              disabled={isFollowLoading}
+              className="bg-trasparent text-start leading-[20px] h-[19px] bg-none p-0 text-pink-50 text-[18px] font-semibold hover:text-pink-72 disabled:opacity-50"
+            >
+              {isFollowLoading ? "Followed" : "Follow"}
+            </Button>
+          )}
+          {isFollowing && (
+            <span className="text-start leading-[20px] h-[19px] text-green-500 text-[16px] font-semibold">
+              Followed
+            </span>
+          )}
         </div>
       </CardFooter>
       {/* </div> */}
