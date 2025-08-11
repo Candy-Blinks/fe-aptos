@@ -1,13 +1,12 @@
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
-  disable: false,
+  disable: true,
 });
 
 // Your Next config is automatically typed!
 export default withPWA({
   // output: "export", // Comment out for dynamic apps with server-side features
-  distDir: "./dist", // Changes the build output directory to `./dist/`.
   basePath: process.env.NEXT_PUBLIC_BASE_PATH, // Sets the base path to `/some-base-path`.
   images: {
     unoptimized: true, // Keep this if you want to disable image optimization

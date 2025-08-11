@@ -30,20 +30,16 @@ const DM_Sans_init = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.METADATA_BASE_URL || ""),
   title: {
-    default: "CandyBlinks | NFT Launchpad",
+    default: "CandyBlinks",
     template: "%s | CandyBlinks",
   },
   description:
     "Create and manage your NFT collections effortlessly with our intuitive platform. Simplify NFT distribution and minting with ease.",
   openGraph: {
-    title: "CandyBlinks - NFT Launchpad",
+    title: "CandyBlinks",
     description: "Easily generate Candy Stores",
     siteName: "CandyBlinks",
     type: "website",
-  },
-  other: {
-    "dscvr:canvas:version": "vNext",
-    "og:image": "https://i.imgur.com/sMQhSGP.png",
   },
 };
 
