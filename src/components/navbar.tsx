@@ -50,10 +50,10 @@ export default function Navbar() {
           <Link href={"/"} className="flex items-center justify-center gap-2">
             <Image src={`${ASSETS_URL}logo.png`} alt="logo" width={45} height={45} className="cursor-pointer" />
 
-            <span className="ty-h6 text-pink-32 font-semibold dm-sans md:block hidden">CandyBlinks</span>
+            <span className="ty-h6 text-pink-32 font-semibold dm-sans block">CandyBlinks</span>
           </Link>
         </div>
-        <div className="flex items-center justify-center text-sm text-white-50 gap-4">
+        <div className="hidden md:flex items-center justify-center text-sm text-white-50 gap-4">
           <span
             className={cn(
               `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,

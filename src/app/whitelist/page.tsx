@@ -10,7 +10,7 @@ import Footer from "@/components/footer";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { ConnectWalletDialog } from "@/components/connect-wallet"; // Adjust the import path as needed
 
-export default function WalletToSheets() {
+export default function WhitelistPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [activeImage, setActiveImage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
