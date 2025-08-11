@@ -123,14 +123,14 @@ export default function WalletToSheets() {
         {/* Right side - Text and button */}
         <div className="w-full md:w-[45%] flex flex-col md:pt-12 items-start justify-center">
           <p className="text-4xl md:text-[44px] font-bold leading-tight">
-            Candy Mob Business Gen 2
+            Candy Move Business
           </p>
           <p className="text-xl md:text-2xl font-semibold mt-6">
-            Be one of the first to OWN a Candy Mob Boss.
+            Be one of the first to OWN a Candy Move Boss.
           </p>
 
           <p className="text-lg text-gray-300 leading-relaxed mt-3">
-            On Mint, claim your exclusive Gen 2 Candy Mob Business NFT. Each NFT
+            On Mint, claim your exclusive Candy Move Business NFT. Each NFT
             unlocks unique perks and status in the Candy underworld. Only a
             select few will make it to the top. Will it be you?
           </p>

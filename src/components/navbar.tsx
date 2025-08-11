@@ -18,26 +18,26 @@ export default function Navbar() {
   };
 
   const navbarlinks: NavbarLink[] = [
-    {
-      text: "Home",
-      href: "/",
-    },
-    {
-      text: "Feed",
-      href: "/feed",
-    },
-    {
-      text: "Create",
-      href: "/create",
-    },
-    {
-      text: "Hub",
-      href: "/hub",
-    },
-    {
-      text: "Tools",
-      href: "/tools",
-    },
+    // {
+    //   text: "Home",
+    //   href: "/",
+    // },
+    // {
+    //   text: "Feed",
+    //   href: "/feed",
+    // },
+    // {
+    //   text: "Create",
+    //   href: "/create",
+    // },
+    // {
+    //   text: "Hub",
+    //   href: "/hub",
+    // },
+    // {
+    //   text: "Tools",
+    //   href: "/tools",
+    // },
     {
       text: "Whitelist",
       href: "/whitelist",
@@ -54,6 +54,41 @@ export default function Navbar() {
           </Link>
         </div>
         <div className="flex items-center justify-center text-sm text-white-50 gap-4">
+          <span
+            className={cn(
+              `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
+            )}
+          >
+            Home
+          </span>
+          <span
+            className={cn(
+              `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
+            )}
+          >
+            Feed
+          </span>
+          <span
+            className={cn(
+              `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
+            )}
+          >
+            Create
+          </span>
+          <span
+            className={cn(
+              `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
+            )}
+          >
+            Hub
+          </span>
+          <span
+            className={cn(
+              `flex text-[18px] focus:font-semibold hover:text-white-100 justify-center items-center hover:text-white font-semibold transition-all`,
+            )}
+          >
+            Tools
+          </span>
           {navbarlinks.map((link, i) => (
             <Link
               key={i}
