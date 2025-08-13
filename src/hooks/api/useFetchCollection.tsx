@@ -22,7 +22,7 @@ export default function useFetchCollection({ collectionOwner, collectionName }: 
 
       try {
         const { data } = await axios.get(
-          `${API_URL}/api/collections/collection?owner=${collectionOwner}&name=${collectionName}`,
+          `${API_URL}api/collections/collection?owner=${collectionOwner}&name=${collectionName}`,
           {
             headers: {
               'cb-api-key': process.env.NEXT_PUBLIC_API_KEY || 'your-dev-api-key',

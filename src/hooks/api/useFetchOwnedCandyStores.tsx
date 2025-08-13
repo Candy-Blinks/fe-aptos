@@ -19,7 +19,7 @@ export default function useFetchOwnedCandyStores({ accountAddress }: IUseFetchOw
 
       try {
         const { data } = await axios.get(
-          `${API_URL}/api/collections/owned-collections?owner=${accountAddress}`,
+          `${API_URL}api/collections/owned-collections?owner=${accountAddress}`,
           {
             headers: {
               'cb-api-key': process.env.NEXT_PUBLIC_API_KEY || 'your-dev-api-key',
